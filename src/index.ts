@@ -52,7 +52,7 @@ interface ITrebisLabel {
 interface ILocalStorage {
     key: string;
     token: string;
-    boardName?: string;
+
 }
 
 namespace TREBIS {
@@ -226,14 +226,29 @@ namespace TREBIS {
         private _request: TRequest;
         public key: string;
         public token: string;
+        public isSendForApi: boolean = false;
+        public trelloToken: string;
+        public readonly DEFAULT_URL = 'https://trello.com';
+        public readonly API_URL = 'https://api.trello.com';
 
         public constructor() {
             this._request = new TRequest();
             this._request.header = TRequest.HEADER_AP_JSON;
         }
 
+        protected _getUrl(): string {
+            if (this.isSendForApi) {
+                return this.API_URL;
+            }
+            return this.DEFAULT_URL;
+        }
+
         protected _getPost(data: ITrelloData): ITrelloData {
-            return {...{key: this.key, token: this.token}, ...data};
+            if (this.isSendForApi) {
+                return {...{key: this.key, token: this.token}, ...data};
+            } else {
+                return {...{token: this.trelloToken}, ...data};
+            }
         }
 
         protected _getQueryString(params): string {
@@ -243,19 +258,31 @@ namespace TREBIS {
         }
 
         public async getBoards() {
-            const query: ITrelloData = this._getPost({});
+            let query: string = '';
+            if (this.isSendForApi) {
+                query = '&' + this._getQueryString(this._getPost({}));
+            }
             this._request.post = null;
-            this._request.url = 'https://api.trello.com/1/members/me/boards?fields=name&' + this._getQueryString(query);
+            this._request.url = this._getUrl() + '/1/members/me/boards?fields=name' + query;
             const send = await this._request.send();
             return send.data;
         }
 
         public async getLists(boardId: string): Promise<ITrelloListData[]> {
-            const query: ITrelloData = this._getPost({});
+            let query: string = '';
+            if (this.isSendForApi) {
+                query = '?' + this._getQueryString(this._getPost({}));
+            }
             this._request.post = null;
-            this._request.url = `https://api.trello.com/1/boards/${boardId}/lists?` + this._getQueryString(query);
+            this._request.url = `${this._getUrl()}/1/boards/${boardId}/lists` + query;
             const send = await this._request.send();
             return send.data;
+        }
+
+        public async deleteList(listId: string) {
+            this._request.url = `${this._getUrl()}/1/lists/${listId}/`;
+            this._request.post = this._getPost({closed: true});
+            return await this._request.send();
         }
 
         public isLink(text: string): boolean {
@@ -271,36 +298,45 @@ namespace TREBIS {
                 name: data.name || Trebis.date(),
                 idBoard: data.idBoard
             });
-            this._request.url = "https://api.trello.com/1/lists";
+            this._request.url = this._getUrl() + "/1/lists";
             return await this._request.send();
         }
 
         public async getCards(listId: string): Promise<ITrelloCardData[]> {
-            const query: ITrelloData = this._getPost({});
+            let query: string = '';
+            if (this.isSendForApi) {
+                query = '&' + this._getQueryString(this._getPost({}));
+            }
             this._request.post = null;
-            this._request.url = `https://api.trello.com/1/lists/${listId}/cards?fields=all&` + this._getQueryString(query);
+            this._request.url = `${this._getUrl()}/1/lists/${listId}/cards?fields=all` + query;
             const send = await this._request.send();
             return send.data;
         }
 
         public async getLabels(boardId: string): Promise<ITrebisLabel[]> {
-            const query: ITrelloData = this._getPost({});
+            let query: string = '';
+            if (this.isSendForApi) {
+                query = '?' + this._getQueryString(this._getPost({}));
+            }
             this._request.post = null;
-            this._request.url = `https://api.trello.com/1/boards/${boardId}/labels?` + this._getQueryString(query);
+            this._request.url = `${this._getUrl()}/1/boards/${boardId}/labels` + query;
             const send = await this._request.send();
             return send.data;
         }
 
         public async addLabels(cardId: string, labelId: string): Promise<IRequestSend> {
-            this._request.url = `https://api.trello.com/1/cards/${cardId}/idLabels`;
+            this._request.url = `${this._getUrl()}/1/cards/${cardId}/idLabels`;
             this._request.post = this._getPost({value: labelId});
             return await this._request.send();
         }
 
         public async deleteLabels(cardId: string, labelId: string): Promise<IRequestSend> {
             this._request.customRequest = "DELETE";
-            const query = this._getPost({});
-            this._request.url = `https://api.trello.com/1/cards/${cardId}/idLabels/${labelId}?` + this._getQueryString(query);
+            let query: string = '';
+            if (this.isSendForApi) {
+                query = '?' + this._getQueryString(this._getPost({}));
+            }
+            this._request.url = `${this._getUrl()}/1/cards/${cardId}/idLabels/${labelId}` + query;
             this._request.post = null;
             const res = await this._request.send();
             this._request.customRequest = null;
@@ -310,7 +346,7 @@ namespace TREBIS {
         public async updateCard(cardId: string, data: ITrelloData = {}): Promise<ITrelloCardData> {
             this._request.header['Accept'] = 'application/json';
             this._request.customRequest = 'PUT';
-            this._request.url = `https://api.trello.com/1/cards/${cardId}`;
+            this._request.url = `${this._getUrl()}/1/cards/${cardId}`;
             if (data.name) {
                 const names = data.name.split(' ');
                 names.forEach((name) => {
@@ -329,7 +365,7 @@ namespace TREBIS {
         }
 
         public async addCard(data: ITrelloData): Promise<ITrelloCardData> {
-            this._request.url = "https://api.trello.com/1/cards";
+            this._request.url = this._getUrl() + "/1/cards";
             this._request.post = this._getPost(data);
             return await this._request.send();
         }
@@ -387,6 +423,7 @@ namespace TREBIS {
             }
             if (token) {
                 this.trello.token = token;
+                this.trello.isSendForApi = true;
             }
         }
 
@@ -523,6 +560,22 @@ namespace TREBIS {
             }
         }
 
+        public async removeOldLists(lists: ITrelloListData[]) {
+            let day = 7;
+            // todo придумать как сделать сейчас не понятно как корректно отфильтровать карточки
+            lists.forEach((list) => {
+                if (day === 0) {
+                    this.trello.deleteList(list.id);
+                } else {
+                    day--;
+                }
+            })
+        }
+
+        public async getStatistic() {
+
+        }
+
         protected _logs(error: string): void {
             console.error(error);
         }
@@ -530,17 +583,20 @@ namespace TREBIS {
 
     function getLocalStorage(): ILocalStorage {
         if (localStorage.trebis_key && localStorage.trebis_token) {
-            const boardName: HTMLInputElement = document.querySelector('.board-name-input');
-            if (boardName) {
-                return {
-                    key: localStorage.trebis_key,
-                    token: localStorage.trebis_token,
-                    boardName: boardName.value
-                }
+            return {
+                key: localStorage.trebis_key,
+                token: localStorage.trebis_token,
             }
-
         }
         return null;
+    }
+
+    function getBoardName(): string {
+        const boardName: HTMLInputElement = document.querySelector('.board-name-input');
+        if (boardName) {
+            return boardName.value;
+        }
+        return '';
     }
 
     function setLocalStorage(storage: ILocalStorage) {
@@ -548,17 +604,31 @@ namespace TREBIS {
         localStorage.setItem('trebis_token', storage.token);
     }
 
+    function getCookie(name) {
+        let matches = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + '=([^;]*)'))
+        return matches ? decodeURIComponent(matches[1]) : undefined
+    }
+
     async function runHandler(e: Event): Promise<void> {
         e.preventDefault();
-        const localStorage = getLocalStorage();
-        if (localStorage === null) {
-            openModal()
-        } else {
-            const key = localStorage.key;
-            const token = localStorage.token;
-            const trebis = new Trebis(key, token);
+        const trelloToken = getCookie('token');
+        let localStorage: ILocalStorage = null;
+        if (!trelloToken) {
+            localStorage = getLocalStorage();
+        }
+        if (trelloToken || localStorage) {
+            const trebis = new Trebis();
+            let boardName = getBoardName();
+            if (!trelloToken) {
+                const key = localStorage.key;
+                const token = localStorage.token;
+                trebis.initKeyToken(key, token);
+            } else {
+                trebis.trello.isSendForApi = false;
+                trebis.trello.trelloToken = trelloToken;
+            }
 
-            await trebis.getBoardId(localStorage.boardName);
+            await trebis.getBoardId(boardName);
             // Добавляем список
             const lists: ITrelloListData[] = await trebis.trello.getLists(trebis.boardId);
             const thisListId = await trebis.getListId(lists, Trebis.date());
@@ -570,15 +640,107 @@ namespace TREBIS {
             // Обновляем карточки
             await trebis.initLabels();
             await trebis.updateCard();
+        } else {
+            openSettingModal()
         }
     }
 
     function settingHandler(e: Event) {
         e.preventDefault();
-        openModal();
+        openSettingModal();
     }
 
-    function openModal() {
+    async function removeHandler(e: Event) {
+        e.preventDefault();
+        let isRemoveLists = false;
+
+        if (confirm('Уверены что хотите удалить старые карточки?')) {
+            if (confirm('Прям на все 100% уверены?')) {
+                isRemoveLists = true;
+            }
+        }
+
+        if (isRemoveLists) {
+            const trelloToken = getCookie('token');
+            let localStorage: ILocalStorage = null;
+            if (!trelloToken) {
+                localStorage = getLocalStorage();
+            }
+            if (trelloToken || localStorage) {
+                const trebis = new Trebis();
+                let boardName = getBoardName();
+                if (!trelloToken) {
+                    const key = localStorage.key;
+                    const token = localStorage.token;
+                    trebis.initKeyToken(key, token);
+                } else {
+                    trebis.trello.isSendForApi = false;
+                    trebis.trello.trelloToken = trelloToken;
+                }
+
+                await trebis.getBoardId(boardName);
+                // Добавляем список
+                let lists: ITrelloListData[] = await trebis.trello.getLists(trebis.boardId);
+                const thisListId = await trebis.getListId(lists, Trebis.date());
+                if (thisListId === null) {
+                    await trebis.createList();
+                } else {
+                    trebis.thisListId = thisListId;
+                }
+                // Обновляем карточки
+                await trebis.initLabels();
+                await trebis.updateCard();
+                lists = null;
+            } else {
+                openSettingModal()
+            }
+        }
+    }
+
+    function openSettingModal() {
+        let key = '';
+        let token = '';
+        const localStorage = getLocalStorage();
+        if (localStorage) {
+            key = localStorage.key;
+            token = localStorage.token;
+        }
+
+        const content: string = '<div class="window-main-col" style="margin: 12px 40px 8px 56px;">' +
+            '<span>Ключ и токен можно получить <a href="https://trello.com/app-key" target="_blank">тут</a></span>' +
+            '<form action="#" id="trebis-data">' +
+            '<div>' +
+            '<label for="trebis-key">key</label>' +
+            `<input type="text" id="trebis-key" style="width: 100%" value="${key}">` +
+            '</div>' +
+            '<div>' +
+            '<label for="trebis-token">token</label>' +
+            `<input type="text" id="trebis-token" style="width: 100%"  value="${token}">` +
+            '</div>' +
+            '<div>' +
+            '<button class="nch-button--primary">Сохранить</button>' +
+            '</div>' +
+            '</form>' +
+            '</div>';
+        openModal(content);
+
+        const trebisData: HTMLElement = document.getElementById('trebis-data');
+        trebisData.onsubmit = (e) => {
+            e.stopPropagation();
+            const keyElement: HTMLElement = document.getElementById('trebis-key');
+            const tokenElement: HTMLElement = document.getElementById('trebis-token');
+            const data: ILocalStorage = {
+                // @ts-ignore
+                key: keyElement.value,
+                // @ts-ignore
+                token: tokenElement.value
+            }
+            setLocalStorage(data);
+            closeModal();
+        }
+    }
+
+    function openModal(content) {
         document.querySelector('body').classList.add('window-up');
         const trelloWindow: HTMLElement = document.querySelector('.window');
         if (trelloWindow) {
@@ -587,50 +749,11 @@ namespace TREBIS {
             windowWrapper.innerHTML = '<a class="icon-md icon-close dialog-close-button js-close-window" href="#"></a>';
             const windowContent = document.createElement('div');
             windowContent.classList.add('card-detail-window', 'u-clearfix');
-
-            let key = '';
-            let token = '';
-            const localStorage = getLocalStorage();
-            if (localStorage) {
-                key = localStorage.key;
-                token = localStorage.token;
-            }
-
-            windowContent.innerHTML = '<div class="window-main-col" style="margin: 12px 40px 8px 56px;">' +
-                '<span>Ключ и токен можно получить <a href="https://trello.com/app-key" target="_blank">тут</a></span>' +
-                '<form action="#" id="trebis-data">' +
-                '<div>' +
-                '<label for="trebis-key">key</label>' +
-                `<input type="text" id="trebis-key" style="width: 100%" value="${key}">` +
-                '</div>' +
-                '<div>' +
-                '<label for="trebis-token">token</label>' +
-                `<input type="text" id="trebis-token" style="width: 100%"  value="${token}">` +
-                '</div>' +
-                '<div>' +
-                '<button class="nch-button--primary">Сохранить</button>' +
-                '</div>' +
-                '</form>' +
-                '</div>';
+            windowContent.innerHTML = content
             windowWrapper.append(windowContent);
             const dialogCloseButton: HTMLElement = document.querySelector('.dialog-close-button');
             if (dialogCloseButton) {
                 dialogCloseButton.onclick = closeModal;
-            }
-
-            const trebisData: HTMLElement = document.getElementById('trebis-data');
-            trebisData.onsubmit = (e) => {
-                e.stopPropagation();
-                const keyElement: HTMLElement = document.getElementById('trebis-key');
-                const tokenElement: HTMLElement = document.getElementById('trebis-token');
-                const data: ILocalStorage = {
-                    // @ts-ignore
-                    key: keyElement.value,
-                    // @ts-ignore
-                    token: tokenElement.value
-                }
-                setLocalStorage(data);
-                closeModal();
             }
         }
     }
@@ -644,17 +767,26 @@ namespace TREBIS {
     function createButtons() {
         const boardHeader = document.querySelector('.board-header');
         if (!boardHeader.querySelector('#trebis-buttons')) {
-            const buttonRunContent = `<a class="board-header-btn" href="#" id="trebis-button-run" title="Нажмите, чтобы автоматически создать карточку, и перенести все не выполненные задачи." aria-label="Запуск скрипта"><span class="icon-sm icon-card board-header-btn-icon"></span></a>`;
-            const buttonSettingContent = `<a class="board-header-btn" href="#" id="trebis-button-setting" title="Нажмите, чтобы изменить свои данные." aria-label="Открытие настроек"><span class="icon-sm icon-gear board-header-btn-icon"></span></a>`;
+            const isTrebisToken = !!getCookie('token');
+            let innerHtml = '<a class="board-header-btn" href="#" id="trebis-button-run" title="Нажмите, чтобы автоматически создать карточку, и перенести все не выполненные задачи." aria-label="Запуск скрипта"><span class="icon-sm icon-card board-header-btn-icon"></span></a>'
+            if (!isTrebisToken) {
+                innerHtml += '<a class="board-header-btn" href="#" id="trebis-button-setting" title="Нажмите, чтобы изменить свои данные." aria-label="Открытие настроек"><span class="icon-sm icon-gear board-header-btn-icon"></span></a>'
+            }
+            innerHtml += '<a class="board-header-btn" href="#" id="trebis-button-trash" title="Нажмите, чтобы удалить старые карточки." aria-label="Удаление старых карточек"><span class="icon-sm icon-trash board-header-btn-icon"></span></a>';
             const buttons = document.createElement('div');
             buttons.id = 'trebis-buttons';
-            buttons.innerHTML = buttonRunContent + buttonSettingContent;
+            buttons.innerHTML = innerHtml;
+
             boardHeader.prepend(buttons);
 
             const runButton = document.getElementById('trebis-button-run');
-            const settingButton = document.getElementById('trebis-button-setting');
+            const trashButton = document.getElementById('trebis-button-trash');
             runButton.onclick = runHandler;
-            settingButton.onclick = settingHandler;
+            trashButton.onclick = removeHandler;
+            if (!isTrebisToken) {
+                const settingButton = document.getElementById('trebis-button-setting');
+                settingButton.onclick = settingHandler;
+            }
         }
     }
 
