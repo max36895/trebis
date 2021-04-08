@@ -9,7 +9,7 @@
   "license": "MIT",
   "main": "dist/index.js",
   "scripts": {
-    "start": "shx rm -rf dist && tsc",
+    "start": "shx rm -rf dist && tsc"
   },
   "engines": {
     "node": ">=10"
