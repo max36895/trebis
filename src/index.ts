@@ -56,7 +56,6 @@ interface ITrebisLabel {
 interface ILocalStorage {
     key: string;
     token: string;
-
 }
 
 interface ITrebisStatistic {
@@ -66,6 +65,10 @@ interface ITrebisStatistic {
     green: number;
 }
 
+/**
+ * Закидываем в namespace, чтобы наверняка не нарваться на одинаковые название классов.
+ * Сейчас расширение взаимодействует с интерфейсом trello и может использовать его методы и классы.
+ */
 namespace TREBIS {
     /**
      * Класс отвечающий за отправку curl запросов на необходимый url.
@@ -143,13 +146,9 @@ namespace TREBIS {
                 options.signal = signal;
             }
 
-            let post: object = null;
             if (this.post) {
-                post = {...{}, ...this.post};
-            }
-            if (post) {
                 options.method = 'POST';
-                options.body = JSON.stringify(post);
+                options.body = JSON.stringify(this.post);
             }
 
             if (this.header) {
@@ -210,10 +209,6 @@ namespace TREBIS {
          *
          * @param {string} url Адрес, на который отправляется запрос.
          * @return Promise<IRequestSend>
-         * [
-         *  - bool status Статус выполнения запроса.
-         *  - mixed data Данные полученные при выполнении запроса.
-         * ]
          * @api
          */
         public async send(url: string = null): Promise<IRequestSend> {
@@ -239,6 +234,10 @@ namespace TREBIS {
         public token: string;
         public isSendForApi: boolean = false;
         public trelloToken: string;
+        /**
+         * Можно отправлять запросы на trello.com не используя api.
+         * По сути разницы нет, только в 1 случае нам не нужно беспокоиться о том, что нужно вводить ключ и токен
+         */
         public readonly DEFAULT_URL = 'https://trello.com';
         public readonly API_URL = 'https://api.trello.com';
 
@@ -268,6 +267,10 @@ namespace TREBIS {
                 .join('&');
         }
 
+        /**
+         * Получаем информацию об организации включая доступные доски
+         * @param orgName
+         */
         public async getOrganizations(orgName: string): Promise<ITrelloOrg> {
             let query: string = '';
             if (this.isSendForApi) {
@@ -279,17 +282,24 @@ namespace TREBIS {
             return send.data;
         }
 
+        /**
+         * Получение всех досок пользователя
+         */
         public async getBoards() {
             let query: string = '';
             if (this.isSendForApi) {
                 query = '&' + this._getQueryString(this._getPost({}));
             }
             this._request.post = null;
-            this._request.url = this._getUrl() + '/1/members/me/boards?fields=name' + query;
+            this._request.url = this._getUrl() + '/1/members/me/boards?fields=name%2CshortLink' + query;
             const send = await this._request.send();
             return send.data;
         }
 
+        /**
+         * Получение всех списков пользователя на определенно доске
+         * @param boardId
+         */
         public async getLists(boardId: string): Promise<ITrelloListData[]> {
             let query: string = '';
             if (this.isSendForApi) {
@@ -301,6 +311,10 @@ namespace TREBIS {
             return send.data;
         }
 
+        /**
+         * Удаление определенного списка
+         * @param listId
+         */
         public async deleteList(listId: string) {
             this._request.url = `${this._getUrl()}/1/lists/${listId}/`;
             this._request.post = this._getPost({closed: true});
@@ -314,6 +328,10 @@ namespace TREBIS {
             return false;
         }
 
+        /**
+         * Добавление списка
+         * @param data
+         */
         public async addList(data: ITrelloData): Promise<IRequestSend> {
             this._request.post = this._getPost({
                 pos: "top",
@@ -324,6 +342,10 @@ namespace TREBIS {
             return await this._request.send();
         }
 
+        /**
+         * Получение всех карточек из списка
+         * @param listId
+         */
         public async getCards(listId: string): Promise<ITrelloCardData[]> {
             let query: string = '';
             if (this.isSendForApi) {
@@ -335,6 +357,10 @@ namespace TREBIS {
             return send.data;
         }
 
+        /**
+         * Получение всех меток доски
+         * @param boardId
+         */
         public async getLabels(boardId: string): Promise<ITrebisLabel[]> {
             let query: string = '';
             if (this.isSendForApi) {
@@ -346,6 +372,11 @@ namespace TREBIS {
             return send.data;
         }
 
+        /**
+         * Добавление метки для карточки
+         * @param cardId
+         * @param labelId
+         */
         public async addLabels(cardId: string, labelId: string): Promise<IRequestSend> {
             this._request.url = `${this._getUrl()}/1/cards/${cardId}/idLabels`;
             this._request.post = this._getPost({value: labelId});
@@ -365,6 +396,11 @@ namespace TREBIS {
             return res;
         }
 
+        /**
+         * Обновление карточки
+         * @param cardId
+         * @param data
+         */
         public async updateCard(cardId: string, data: ITrelloData = {}): Promise<ITrelloCardData> {
             this._request.header['Accept'] = 'application/json';
             this._request.customRequest = 'PUT';
@@ -373,7 +409,7 @@ namespace TREBIS {
                 const names = data.name.split(' ');
                 names.forEach((name) => {
                     if (this.isLink(name)) {
-                        if (data.desc.indexOf(name) === -1) {
+                        if (!data.desc.includes(name)) {
                             data.desc = `[Ссылка на задачу](${name})\n${data.desc}`;
                         }
                     }
@@ -386,6 +422,10 @@ namespace TREBIS {
             return res;
         }
 
+        /**
+         * Добавление карточки
+         * @param data
+         */
         public async addCard(data: ITrelloData): Promise<ITrelloCardData> {
             this._request.url = this._getUrl() + "/1/cards";
             this._request.post = this._getPost(data);
@@ -394,7 +434,7 @@ namespace TREBIS {
     }
 
     /**
-     * Класс выполняющий необходимые действия для trello
+     * Класс выполняющий необходимые действия с trello
      */
     class Trebis {
         private DAY = 3600 * 24 * 1000;
@@ -413,10 +453,11 @@ namespace TREBIS {
         }
 
         /**
-         * Получение корректной даты в формате d.m
+         * Получение корректной даты в формате d.m.Y
          * @param time
+         * @param isFullYear
          */
-        public static date(time: number = null): string {
+        public static date(time: number = null, isFullYear: boolean = false): string {
             if (time === null) {
                 time = Date.now();
             }
@@ -436,6 +477,7 @@ namespace TREBIS {
             } else {
                 result += month;
             }
+            result += '.' + (date.getFullYear() - (isFullYear ? 0 : 2000));
             return result;
         }
 
@@ -449,17 +491,57 @@ namespace TREBIS {
             }
         }
 
-        public async getBoardId(boardName: string): Promise<string> {
-            const boards = await this.trello.getBoards();
+        /**
+         * Получение идентификатора доски.
+         * Он нужен для добавления, обновления и удаления карточек и списков
+         * @param shortLink
+         */
+        public async getBoardId(shortLink: string): Promise<string> {
+            /**
+             * Получаем все доски пользователя
+             */
+            let boards = await this.trello.getBoards();
             this.boardId = null;
             boards.forEach((board) => {
-                if (board.name === boardName) {
+                if (shortLink.includes(board.shortLink)) {
                     this.boardId = board.id;
                 }
-            })
+            });
+            if (!this.boardId) {
+                /**
+                 * Может быть так, что у пользователя нет доски, но при этом он привязан к доске организации
+                 * У Вани например так. Поэтому получаем все доски организации и ищем нужную доску.
+                 * + в том, что можно залезть в чужую доску и работать с ней
+                 */
+                boards = await this.trello.getOrganizations('basecontrol');
+                if (boards) {
+                    boards.boards.forEach((board) => {
+                        if (shortLink.includes(board.shortLink)) {
+                            this.boardId = board.id;
+                        }
+                    });
+                }
+                /**
+                 * Пусть пока будет тут. Тут осуществляется поиск по имени доски,
+                 * но если есть 2 одинаковые доски, то будет боль...
+                 */
+                /*const boardNameEl: HTMLInputElement = document.querySelector('.board-name-input');
+                if (boardNameEl) {
+                    const boardName: string = boardNameEl.value.toLowerCase().trim();
+                    boards.forEach((board) => {
+                        if (board.name.toLowerCase().trim().includes(boardName)) {
+                            this.boardId = board.id;
+                        }
+                    });
+                }*/
+            }
+
             return this.boardId;
         }
 
+        /**
+         * Получаем все метки
+         */
         public async initLabels(): Promise<void> {
             if (this.boardId) {
                 const labels = await this.trello.getLabels(this.boardId);
@@ -468,7 +550,7 @@ namespace TREBIS {
                     this.labels[label.color] = label.id;
                 })
             } else {
-                this._logs('initLabels(): Не указал идентификатор доски!');
+                this._logs('initLabels(): Не указан идентификатор доски!');
             }
         }
 
@@ -480,33 +562,37 @@ namespace TREBIS {
                     this.thisListId = result.data.id || null;
                 }
             } else {
-                this._logs('createList(): Не указал идентификатор доски!');
+                this._logs('createList(): Не указан идентификатор доски!');
             }
         }
 
+        /**
+         * Получаем ид списка
+         * @param lists
+         * @param name
+         */
         public getListId(lists: ITrelloListData[], name: string): string {
-            let parseName: any = name.split('.');
-            for (let i = 0; i < parseName.length; i++) {
-                parseName[i] = Number(parseName[i]);
-            }
+            const parseName: Date = getDate(name);
             for (const list of lists) {
-                let parseListName: any;
-                if (list.name.indexOf('.') !== -1) {
-                    parseListName = list.name.split('.');
-                } else {
-                    parseListName = list.name.split('-');
-                }
-                for (let i = 0; i < parseListName.length; i++) {
-                    parseListName[i] = Number(parseListName[i]);
-                }
-                if (parseName[0] === parseListName[0] && parseName[1] === parseListName[1]) {
-                    //if (list.name === name) {
-                    return list.id;
+                const parseListName = getDate(list.name);
+                if ((parseListName && parseName) && isEqualDate(parseListName, parseName)) {
+                    return list.id
+                } else if (name === list.name) {
+                    return list.id
                 }
             }
             return null;
         }
 
+        /**
+         * Получаем ид списка для текущей даты. Если списка нет, то создаем его.
+         * Также получаем ид списка с предыдущей даты
+         *
+         * При этом для оптимизации, ищем список за последние 15 дней.
+         *
+         * @param lists
+         * @protected
+         */
         protected async initListId(lists: ITrelloListData[]): Promise<void> {
             if (!this.thisListId) {
                 this.thisListId = await this.getListId(lists, Trebis.date());
@@ -559,7 +645,7 @@ namespace TREBIS {
                         let addedCard = true;
                         let addedLabels: string[] = [];
                         for (const label of lastCard.labels) {
-                            if (['green', 'blue'].indexOf(label.color) !== -1) {
+                            if (['green', 'blue'].includes(label.color)) {
                                 addedCard = false;
                                 addedLabels = [];
                                 break;
@@ -592,14 +678,18 @@ namespace TREBIS {
                     this._logs('updateCard(): Не удалось найти карточку за предыдущий рабочий день!');
                 }
             } else {
-                this._logs('updateCard(): Не указал идентификатор доски!');
+                this._logs('updateCard(): Не указан идентификатор доски!');
             }
         }
 
+        /**
+         * Удаление старых списков. Как правильнее сделать не понятно. Поэтому временно оставлю как есть
+         * @param lists
+         */
         public async removeOldLists(lists: ITrelloListData[]) {
-            let day = 7;
-            // todo придумать как сделать сейчас не понятно как корректно отфильтровать и удалять  карточки
-            // поэтому оставляю первые 7 карточек + может быть бага с годами...
+            let day = 30;
+            // todo придумать как сделать сейчас не понятно как корректно отфильтровать и удалять карточки
+            // поэтому оставляю первые 30 карточек + может быть бага с годами...
             lists.forEach((list) => {
                 if (day === 0) {
                     this.trello.deleteList(list.id);
@@ -610,14 +700,13 @@ namespace TREBIS {
         }
 
         /**
-         * todo нужно понять как отображать статистику. понятно что нужна возможность выбора периода. по умолчанию можно сделать за неделю или месяц
-         * Выводить вида:
-         * красных - ...шт.
-         * желтых - ...шт.
-         * зеленых - ...шт.
-         * синих - ...шт.
+         * Получение статистики по доске.
+         * Важно чтобы boardId был проинициализирован, иначе будет ошибка
          */
         public async getStatistic(startValue: string, endValue: string): Promise<ITrebisStatistic> {
+            if (!this.boardId) {
+                return null;
+            }
             const lists: ITrelloListData[] = await this.trello.getLists(this.boardId);
             await this.initLabels();
             const res = {
@@ -628,40 +717,44 @@ namespace TREBIS {
             }
             let isStart = false;
 
-            let startValues: any = startValue.split(startValue.indexOf('.') !== -1 ? '.' : '-')
-            let endValues: any = endValue.split(endValue.indexOf('.') !== -1 ? '.' : '-')
-            for (let i = 0; i < startValues.length; i++) {
-                startValues[i] = Number(startValues[i]);
-                endValues[i] = Number(endValues[i]);
-            }
+            const startDate: Date = getDate(startValue);
+            const endDate: Date = getDate(endValue);
+            let oldListDate: Date = null;
 
             for (const list of lists) {
-                const listName: any = list.name.split(list.name.indexOf('.') !== -1 ? '.' : '-');
-                let listLongName = list.name
-                if (listName.length > 2) {
-                    listLongName = listName.slice(0, 2).join('.');
+                const listDate: Date = getDate(list.name)
+                if (oldListDate && oldListDate < listDate) {
+                    // Если в дате есть год, то все оставляем как есть.
+                    // Если года не указан, то по умолчанию ставится текущий год, поэтому вычитаем 1 год
+                    if (list.name.split(list.name.includes('.') ? '.' : '-').length < 3) {
+                        listDate.setFullYear(oldListDate.getFullYear() - 1);
+                    }
                 }
-                for (let i = 0; i < listName.length; i++) {
-                    listName[i] = Number(listName[i]);
-                }
-
-                if (listLongName === endValue ||  (endValues[1] > listName[1] || (endValues[1] === listName[1] && endValues[0] > listName[0]))) {
+                if (list.name === endValue || (
+                    (endDate && listDate) && (listDate <= endDate)
+                )) {
                     isStart = true;
+                }
+                if ((startDate && listDate) && (startDate > listDate)) {
+                    break;
                 }
                 if (isStart) {
                     const cards: ITrelloCardData[] = await this.trello.getCards(list.id);
                     for (const card of cards) {
                         for (const label of card.labels) {
-                            if (['green', 'blue', 'red', 'yellow'].indexOf(label.color) !== -1) {
+                            if (['green', 'blue', 'red', 'yellow'].includes(label.color)) {
                                 res[label.color] += 1;
                             }
                         }
                     }
                 }
 
-                if (listLongName === startValue || (startValues[1] > listName[1] || (startValues[1] === listName[1] && startValues[0] > listName[0]))) {
+                if (list.name === startValue || (
+                    (startDate && listDate) && isEqualDate(startDate, listDate)
+                )) {
                     break;
                 }
+                oldListDate = listDate;
             }
             return res;
         }
@@ -671,8 +764,12 @@ namespace TREBIS {
         }
     }
 
-    class Application {
 
+    /**
+     * Само приложение, работающее с интерфейсом trello
+     */
+    class Application {
+        private readonly ADMIN_USERS = ['maxim45387091', 'krasilnikow'];
         protected _trebis: Trebis;
 
         protected trebisInit() {
@@ -718,21 +815,21 @@ namespace TREBIS {
             return matches ? decodeURIComponent(matches[1]) : undefined
         }
 
-        public getBoardName(): string {
-            const boardName: HTMLInputElement = document.querySelector('.board-name-input');
-            if (boardName) {
-                return boardName.value;
-            }
-            return '';
+        public getShortLink(): string {
+            return document.location.pathname;
         }
 
+        /**
+         * Запуск обработчика, который создает список и прикрепляет карточки
+         * @param e
+         */
         public async runHandler(e: Event): Promise<void> {
             e.preventDefault();
             if (!this._trebis) {
                 this.trebisInit();
             }
             if (this._trebis) {
-                await this._trebis.getBoardId(this.getBoardName());
+                await this._trebis.getBoardId(this.getShortLink());
                 // Добавляем список
                 const lists: ITrelloListData[] = await this._trebis.trello.getLists(this._trebis.boardId);
                 const thisListId = await this._trebis.getListId(lists, Trebis.date());
@@ -749,16 +846,26 @@ namespace TREBIS {
             }
         }
 
+        /**
+         * Нажата кнопка настроек.
+         * По факту этой кнопки быть не должно, но если она есть, значит не удалось получить токе из cookie
+         * Поэтому даем пользователю возможность ввести ключ и токен вручную
+         * @param e
+         */
         public settingHandler(e: Event) {
             e.preventDefault();
             this.openSettingModal();
         }
 
+        /**
+         * Обработка для удаления старых карточек
+         * @param e
+         */
         public async removeHandler(e: Event) {
             e.preventDefault();
             let isRemoveLists = false;
 
-            if (confirm('Уверены что хотите удалить старые карточки?')) {
+            if (confirm('Уверены что хотите удалить старые карточки, при этом останутся первые 30 карточек?')) {
                 if (confirm('Прям на все 100% уверены?')) {
                     isRemoveLists = true;
                 }
@@ -769,7 +876,7 @@ namespace TREBIS {
                     this.trebisInit();
                 }
                 if (this._trebis) {
-                    await this._trebis.getBoardId(this.getBoardName());
+                    await this._trebis.getBoardId(this.getShortLink());
                     let lists: ITrelloListData[] = await this._trebis.trello.getLists(this._trebis.boardId);
                     await this._trebis.removeOldLists(lists);
                     lists = null;
@@ -781,19 +888,11 @@ namespace TREBIS {
 
         protected _revertDate(date: string, isInput: boolean = true, isRemoveYear: boolean = false): string {
             if (isInput) {
-                let dateResult = date.split('.');
-
-                const year = dateResult[2];
-                dateResult[2] = dateResult[0];
-                dateResult[0] = year;
-
-                return dateResult.join('-')
+                return date.split('.').reverse().join('-')
             } else {
-                let dateResult = date.split('-');
+                let dateResult: any = date.split('-').reverse();
 
-                const day = dateResult[2];
-                dateResult[2] = dateResult[0];
-                dateResult[0] = day;
+                dateResult[2] = (Number(dateResult[2]) - 2000);
                 if (isRemoveYear) {
                     dateResult = dateResult.slice(0, 2);
                 }
@@ -802,6 +901,17 @@ namespace TREBIS {
             }
         }
 
+        protected _getTemplateResultForStat(statInfo: ITrebisStatistic): string {
+            return `<p>Красных: <b>${statInfo.red}</b>шт.</p>` +
+                `<p>Желтых: <b>${statInfo.yellow}</b>шт.</p>` +
+                `<p>Синих: <b>${statInfo.blue}</b>шт.</p>` +
+                `<p>Зеленых: <b>${statInfo.green}</b>шт.</p>`
+        }
+
+        /**
+         * Обработка нажатия кнопки для получения статистики пользователя по доске
+         * @param event
+         */
         public statisticHandler(event: MouseEvent) {
             event.preventDefault();
             this.openModal(this.getTemplateContentForStat());
@@ -817,17 +927,16 @@ namespace TREBIS {
                     const dateStart: HTMLInputElement = document.querySelector('#trebis_date-start');
                     const dateEnd: HTMLInputElement = document.querySelector('#trebis_date-end');
 
-                    const startValue = this._revertDate(dateStart.value, false, true);
-                    const endValue = this._revertDate(dateEnd.value, false, true);
-                    await this._trebis.getBoardId(this.getBoardName());
+                    const startValue = this._revertDate(dateStart.value, false);
+                    const endValue = this._revertDate(dateEnd.value, false);
+                    await this._trebis.getBoardId(this.getShortLink());
                     const statInfo = await this._trebis.getStatistic(startValue, endValue);
                     const statisticContent: HTMLElement = document.querySelector('.trebis-statistic_content');
-                    statisticContent.innerHTML = '<div>' +
-                        `<p>Красных: ${statInfo.red}шт.</p>` +
-                        `<p>Желтых: ${statInfo.yellow}шт.</p>` +
-                        `<p>Синих: ${statInfo.blue}шт.</p>` +
-                        `<p>Зеленых: ${statInfo.green}шт.</p>` +
-                        '</div>';
+                    if (statInfo) {
+                        statisticContent.innerHTML = '<div>' + this._getTemplateResultForStat(statInfo) + '</div>';
+                    } else {
+                        statisticContent.innerText = '<p style="color: red">Произошла ошибка при получении доски</p>';
+                    }
                 } else {
                     this.openSettingModal();
                 }
@@ -890,9 +999,7 @@ namespace TREBIS {
                 windowWrapper.append(windowContent);
                 const dialogCloseButton: HTMLElement = document.querySelector('.dialog-close-button');
                 if (dialogCloseButton) {
-                    dialogCloseButton.onclick = () => {
-                        this.closeModal()
-                    };
+                    dialogCloseButton.onclick = this.closeModal.bind(this);
                 }
             }
         }
@@ -915,7 +1022,7 @@ namespace TREBIS {
                 let isShowDropButton = false;
                 if (memberMenu) {
                     const userName = (memberMenu.title.match(/\(([^\)]+)\)/gi))[0]?.replace(/\(|\)/gi, '');
-                    if (['maxim45387091', 'krasilnikow'].indexOf(userName) !== -1) {
+                    if (this.ADMIN_USERS.includes(userName)) {
                         isShowDropButton = true;
                     }
 
@@ -931,44 +1038,39 @@ namespace TREBIS {
                 boardHeader.prepend(buttons);
 
                 const runButton = document.getElementById('trebis-button-run');
-                runButton.onclick = (e) => {
-                    this.runHandler(e)
-                };
+                runButton.onclick = this.runHandler.bind(this);
 
                 if (isShowDropButton) {
                     const trashButton = document.getElementById('trebis-button-trash');
-                    trashButton.onclick = (e) => {
-                        this.removeHandler(e)
-                    };
+                    trashButton.onclick = this.removeHandler.bind(this);
                 }
 
                 const statisticButton = document.getElementById('trebis-button-statistic');
-                statisticButton.onclick = (e) => {
-                    this.statisticHandler(e)
-                };
+                statisticButton.onclick = this.statisticHandler.bind(this);
 
                 if (!isTrebisToken) {
                     const settingButton = document.getElementById('trebis-button-setting');
-                    settingButton.onclick = (e) => {
-                        this.settingHandler(e)
-                    };
+                    settingButton.onclick = this.settingHandler.bind(this);
                 }
             }
         }
 
         protected getTemplateContentForStat(): string {
-            const oldDate = Date.now() - 3600000 * 24 * 7;
-            const dateStart = Trebis.date(oldDate) + '.' + (new Date(oldDate)).getFullYear();
-            const dateEnd = Trebis.date() + '.' + (new Date()).getFullYear();
+            const oldDate = Date.now() - 3600 * 24 * 7 * 1000;
+            const dateStart = Trebis.date(oldDate, true);
+            const dateEnd = Trebis.date(null, true);
 
             return '<div class="window-main-col" style="margin: 12px 40px 8px 56px;">' +
+                '<h2>Получение статистики:</h2>' +
+                '<div style="display: flex">' +
                 '<div>' +
-                '<label for="trebis-key">с</label>' +
+                '<label for="trebis-key"> с</label>' +
                 `<input type="date" id="trebis_date-start" style="width: 100%" value="${this._revertDate(dateStart)}">` +
                 '</div>' +
-                '<div>' +
-                '<label for="trebis-token">до</label>' +
+                '<div style="margin-left: 15px">' +
+                '<label for="trebis-token"> до</label>' +
                 `<input type="date" id="trebis_date-end" style="width: 100%"  value="${this._revertDate(dateEnd)}">` +
+                '</div>' +
                 '</div>' +
                 '<div>' +
                 '<button class="nch-button--primary trebis-statistic_btn">Построить</button>' +
@@ -977,7 +1079,11 @@ namespace TREBIS {
                 '</div>';
         }
 
-        public statisticAdminHandler(event: MouseEvent) {
+        /**
+         * Обработка нажатия кнопки для получения статистики по всем пользователям
+         * @param event
+         */
+        public statisticOrgHandler(event: MouseEvent) {
             event.preventDefault();
             this.openModal(this.getTemplateContentForStat());
 
@@ -992,8 +1098,8 @@ namespace TREBIS {
                     const dateStart: HTMLInputElement = document.querySelector('#trebis_date-start');
                     const dateEnd: HTMLInputElement = document.querySelector('#trebis_date-end');
 
-                    const startValue = this._revertDate(dateStart.value, false, true);
-                    const endValue = this._revertDate(dateEnd.value, false, true);
+                    const startValue = this._revertDate(dateStart.value, false);
+                    const endValue = this._revertDate(dateEnd.value, false);
 
                     const orgBoards: ITrelloOrg = await this._trebis.trello.getOrganizations('basecontrol');
                     const statisticContent: HTMLElement = document.querySelector('.trebis-statistic_content');
@@ -1002,15 +1108,16 @@ namespace TREBIS {
                         for (const board of orgBoards.boards) {
                             this._trebis.boardId = board.id;
                             const statInfo = await this._trebis.getStatistic(startValue, endValue);
-                            statisticContent.innerHTML += '<div style="margin: 15px 0;">' +
-                                `<h3>Информация по доске: <u>${board.name}</u></h3>` +
-                                '<div class="u-gutter">' +
-                                `<p>Красных: ${statInfo.red}шт.</p>` +
-                                `<p>Желтых: ${statInfo.yellow}шт.</p>` +
-                                `<p>Синих: ${statInfo.blue}шт.</p>` +
-                                `<p>Зеленых: ${statInfo.green}шт.</p>` +
-                                '</div>' +
-                                '</div>';
+                            if (statInfo) {
+                                statisticContent.innerHTML += '<div style="margin: 15px 0;">' +
+                                    `<h3>Информация по доске: <u>${board.name}</u></h3>` +
+                                    '<div class="u-gutter">' +
+                                    this._getTemplateResultForStat(statInfo) +
+                                    '</div>' +
+                                    '</div>';
+                            } else {
+                                statisticContent.innerText += `<p style="color: red">Произошла ошибка при получении доски <u>${board.name}</u></p>`;
+                            }
                         }
                     } else {
                         statisticContent.innerHTML = '<span style="color:red">Произошла ошибка при получении информации о доске</span>';
@@ -1021,7 +1128,7 @@ namespace TREBIS {
             }
         }
 
-        public createAdminButtons() {
+        public createOrgButtons() {
             const boardHeader = document.querySelector('#header');
             if (boardHeader && !boardHeader.querySelector('#trebis_admin-buttons')) {
                 const isTrebisToken = !!this.getCookie('token');
@@ -1036,473 +1143,99 @@ namespace TREBIS {
                 boardHeader.prepend(buttons);
 
                 const statisticButton = document.getElementById('trebis_admin-button-statistic');
-                statisticButton.onclick = (e) => {
-                    this.statisticAdminHandler(e)
-                };
+                statisticButton.onclick = this.statisticOrgHandler.bind(this);
 
                 if (!isTrebisToken) {
                     const settingButton = document.getElementById('trebis-button-setting');
-                    settingButton.onclick = (e) => {
-                        this.settingHandler(e)
-                    };
-                }
-            }
-        }
-
-    }
-
-    /*function getLocalStorage(): ILocalStorage {
-        if (localStorage.trebis_key && localStorage.trebis_token) {
-            return {
-                key: localStorage.trebis_key,
-                token: localStorage.trebis_token,
-            }
-        }
-        return null;
-    }
-
-    function getBoardName(): string {
-        const boardName: HTMLInputElement = document.querySelector('.board-name-input');
-        if (boardName) {
-            return boardName.value;
-        }
-        return '';
-    }
-
-    function setLocalStorage(storage: ILocalStorage) {
-        localStorage.setItem('trebis_key', storage.key);
-        localStorage.setItem('trebis_token', storage.token);
-    }
-
-    function getCookie(name) {
-        let matches = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + '=([^;]*)'))
-        return matches ? decodeURIComponent(matches[1]) : undefined
-    }
-
-    async function runHandler(e: Event): Promise<void> {
-        e.preventDefault();
-        const trelloToken = getCookie('token');
-        let localStorage: ILocalStorage = null;
-        if (!trelloToken) {
-            localStorage = getLocalStorage();
-        }
-        if (trelloToken || localStorage) {
-            const trebis = new Trebis();
-            let boardName = getBoardName();
-            if (!trelloToken) {
-                const key = localStorage.key;
-                const token = localStorage.token;
-                trebis.initKeyToken(key, token);
-            } else {
-                trebis.trello.isSendForApi = false;
-                trebis.trello.trelloToken = trelloToken;
-            }
-
-            await trebis.getBoardId(boardName);
-            // Добавляем список
-            const lists: ITrelloListData[] = await trebis.trello.getLists(trebis.boardId);
-            const thisListId = await trebis.getListId(lists, Trebis.date());
-            if (thisListId === null) {
-                await trebis.createList();
-            } else {
-                trebis.thisListId = thisListId;
-            }
-            // Обновляем карточки
-            await trebis.initLabels();
-            await trebis.updateCard();
-        } else {
-            openSettingModal()
-        }
-    }
-
-    function settingHandler(e: Event) {
-        e.preventDefault();
-        openSettingModal();
-    }
-
-    async function removeHandler(e: Event) {
-        e.preventDefault();
-        let isRemoveLists = false;
-
-        if (confirm('Уверены что хотите удалить старые карточки?')) {
-            if (confirm('Прям на все 100% уверены?')) {
-                isRemoveLists = true;
-            }
-        }
-
-        if (isRemoveLists) {
-            const trelloToken = getCookie('token');
-            let localStorage: ILocalStorage = null;
-            if (!trelloToken) {
-                localStorage = getLocalStorage();
-            }
-            if (trelloToken || localStorage) {
-                const trebis = new Trebis();
-                let boardName = getBoardName();
-                if (!trelloToken) {
-                    const key = localStorage.key;
-                    const token = localStorage.token;
-                    trebis.initKeyToken(key, token);
-                } else {
-                    trebis.trello.isSendForApi = false;
-                    trebis.trello.trelloToken = trelloToken;
-                }
-
-                await trebis.getBoardId(boardName);
-                // Добавляем список
-                let lists: ITrelloListData[] = await trebis.trello.getLists(trebis.boardId);
-                const thisListId = await trebis.getListId(lists, Trebis.date());
-                if (thisListId === null) {
-                    await trebis.createList();
-                } else {
-                    trebis.thisListId = thisListId;
-                }
-                // Обновляем карточки
-                await trebis.initLabels();
-                await trebis.updateCard();
-                lists = null;
-            } else {
-                openSettingModal()
-            }
-        }
-    }
-
-    function statisticHandler() {
-        const dateStart = Trebis.date(getOldDate()) + '.' + (new Date(getOldDate())).getFullYear();
-        const dateEnd = Trebis.date() + '.' + (new Date()).getFullYear();
-
-        const revertDate = (date: string, isInput: boolean = true, isRemoveYear: boolean = false): string => {
-            if (isInput) {
-                let dateResult = date.split('.');
-
-                const year = dateResult[2];
-                dateResult[2] = dateResult[0];
-                dateResult[0] = year;
-
-                return dateResult.join('-')
-            } else {
-                let dateResult = date.split('-');
-
-                const day = dateResult[2];
-                dateResult[2] = dateResult[0];
-                dateResult[0] = day;
-                if (isRemoveYear) {
-                    dateResult = dateResult.slice(0, 2);
-                    //delete dateResult[2];
-                }
-
-                return dateResult.join('.')
-            }
-        }
-
-        const content: string = '<div class="window-main-col" style="margin: 12px 40px 8px 56px;">' +
-            '<div>' +
-            '<label for="trebis-key">с</label>' +
-            `<input type="date" id="trebis_date-start" style="width: 100%" value="${revertDate(dateStart)}">` +
-            '</div>' +
-            '<div>' +
-            '<label for="trebis-token">до</label>' +
-            `<input type="date" id="trebis_date-end" style="width: 100%"  value="${revertDate(dateEnd)}">` +
-            '</div>' +
-            '<div>' +
-            '<button class="nch-button--primary trebis-statistic_btn">Построить</button>' +
-            '</div>' +
-            '<div class="trebis-statistic_content" style="margin: 30px 0;"></div>' +
-            '</div>';
-        openModal(content);
-
-
-        const trebisStatRes: HTMLElement = document.querySelector('.trebis-statistic_btn');
-        trebisStatRes.onclick = async (e: MouseEvent) => {
-            e.preventDefault();
-
-            const trelloToken = getCookie('token');
-            let localStorage: ILocalStorage = null;
-            if (!trelloToken) {
-                localStorage = getLocalStorage();
-            }
-            if (trelloToken || localStorage) {
-                const trebis = new Trebis();
-                let boardName = getBoardName();
-                if (!trelloToken) {
-                    const key = localStorage.key;
-                    const token = localStorage.token;
-                    trebis.initKeyToken(key, token);
-                } else {
-                    trebis.trello.isSendForApi = false;
-                    trebis.trello.trelloToken = trelloToken;
-                }
-
-                const dateStart: HTMLInputElement = document.querySelector('#trebis_date-start');
-                const dateEnd: HTMLInputElement = document.querySelector('#trebis_date-end');
-
-                const startValue = revertDate(dateStart.value, false, true);
-                const endValue = revertDate(dateEnd.value, false, true);
-
-                await trebis.getBoardId(boardName);
-                const statInfo = await trebis.getStatistic(startValue, endValue);
-                const statisticContent: HTMLElement = document.querySelector('.trebis-statistic_content');
-                statisticContent.innerHTML = '<div>' +
-                    `<p>Красных: ${statInfo.red}шт.</p>` +
-                    `<p>Желтых: ${statInfo.yellow}шт.</p>` +
-                    `<p>Синих: ${statInfo.blue}шт.</p>` +
-                    `<p>Зеленых: ${statInfo.green}шт.</p>` +
-                    '</div>';
-            }
-        }
-    }
-
-    function openSettingModal() {
-        let key = '';
-        let token = '';
-        const localStorage = getLocalStorage();
-        if (localStorage) {
-            key = localStorage.key;
-            token = localStorage.token;
-        }
-
-        const content: string = '<div class="window-main-col" style="margin: 12px 40px 8px 56px;">' +
-            '<span>Ключ и токен можно получить <a href="https://trello.com/app-key" target="_blank">тут</a></span>' +
-            '<form action="#" id="trebis-data">' +
-            '<div>' +
-            '<label for="trebis-key">key</label>' +
-            `<input type="text" id="trebis-key" style="width: 100%" value="${key}">` +
-            '</div>' +
-            '<div>' +
-            '<label for="trebis-token">token</label>' +
-            `<input type="text" id="trebis-token" style="width: 100%"  value="${token}">` +
-            '</div>' +
-            '<div>' +
-            '<button class="nch-button--primary">Сохранить</button>' +
-            '</div>' +
-            '</form>' +
-            '</div>';
-        openModal(content);
-
-        const trebisData: HTMLElement = document.getElementById('trebis-data');
-        trebisData.onsubmit = (e) => {
-            e.stopPropagation();
-            const keyElement: HTMLElement = document.getElementById('trebis-key');
-            const tokenElement: HTMLElement = document.getElementById('trebis-token');
-            const data: ILocalStorage = {
-                // @ts-ignore
-                key: keyElement.value,
-                // @ts-ignore
-                token: tokenElement.value
-            }
-            setLocalStorage(data);
-            closeModal();
-        }
-    }
-
-    function openModal(content) {
-        document.querySelector('body').classList.add('window-up');
-        const trelloWindow: HTMLElement = document.querySelector('.window');
-        if (trelloWindow) {
-            trelloWindow.style.display = 'block';
-            const windowWrapper = document.querySelector('.window-wrapper');
-            windowWrapper.innerHTML = '<a class="icon-md icon-close dialog-close-button js-close-window" href="#"></a>';
-            const windowContent = document.createElement('div');
-            windowContent.classList.add('card-detail-window', 'u-clearfix');
-            windowContent.innerHTML = content
-            windowWrapper.append(windowContent);
-            const dialogCloseButton: HTMLElement = document.querySelector('.dialog-close-button');
-            if (dialogCloseButton) {
-                dialogCloseButton.onclick = closeModal;
-            }
-        }
-    }
-
-    function closeModal() {
-        document.querySelector('body').classList.remove('window-up');
-        const trelloWindow: HTMLElement = document.querySelector('.window');
-        trelloWindow.style.display = 'none';
-    }
-
-    function createButtons() {
-        const boardHeader = document.querySelector('.board-header');
-        if (boardHeader && !boardHeader.querySelector('#trebis-buttons')) {
-            const isTrebisToken = !!getCookie('token');
-            let innerHtml = '<a class="board-header-btn" href="#" id="trebis-button-run" title="Нажмите, чтобы автоматически создать карточку, и перенести все не выполненные задачи." aria-label="Запуск скрипта"><span class="icon-sm icon-card board-header-btn-icon"></span></a>'
-            if (!isTrebisToken) {
-                innerHtml += '<a class="board-header-btn" href="#" id="trebis-button-setting" title="Нажмите, чтобы изменить свои данные." aria-label="Открытие настроек"><span class="icon-sm icon-gear board-header-btn-icon"></span></a>'
-            }
-            const memberMenu: HTMLElement = document.querySelector('.js-open-header-member-menu');
-            let isShowDropButton = false;
-            if (memberMenu) {
-                const userName = (memberMenu.title.match(/\(([^\)]+)\)/gi))[0]?.replace(/\(|\)/gi, '');
-                if (['maxim45387091', 'krasilnikow'].indexOf(userName) !== -1) {
-                    isShowDropButton = true;
-                }
-
-            }
-            if (isShowDropButton) {
-                innerHtml += '<a class="board-header-btn" href="#" id="trebis-button-trash" title="Нажмите, чтобы удалить старые карточки." aria-label="Удаление старых карточек"><span class="icon-sm icon-trash board-header-btn-icon"></span></a>';
-            }
-            innerHtml += '<a class="board-header-btn" href="#" id="trebis-button-statistic" title="Нажмите, чтобы получить статистику." aria-label="Получение статистики"><span class="icon-sm icon-information board-header-btn-icon"></span></a>';
-            const buttons = document.createElement('div');
-            buttons.id = 'trebis-buttons';
-            buttons.innerHTML = innerHtml;
-
-            boardHeader.prepend(buttons);
-
-            const runButton = document.getElementById('trebis-button-run');
-            runButton.onclick = runHandler;
-
-            if (isShowDropButton) {
-                const trashButton = document.getElementById('trebis-button-trash');
-                trashButton.onclick = removeHandler;
-            }
-
-            const statisticButton = document.getElementById('trebis-button-statistic');
-            statisticButton.onclick = statisticHandler;
-
-            if (!isTrebisToken) {
-                const settingButton = document.getElementById('trebis-button-setting');
-                settingButton.onclick = settingHandler;
-            }
-        }
-    }
-
-    function getOldDate(): number {
-        return Date.now() - 3600000 * 24 * 7;
-    }
-
-    function statisticAdminHandler() {
-        const dateStart = Trebis.date(getOldDate()) + '.' + (new Date(getOldDate())).getFullYear();
-        const dateEnd = Trebis.date() + '.' + (new Date()).getFullYear();
-
-        const revertDate = (date: string, isInput: boolean = true, isRemoveYear: boolean = false): string => {
-            if (isInput) {
-                let dateResult = date.split('.');
-
-                const year = dateResult[2];
-                dateResult[2] = dateResult[0];
-                dateResult[0] = year;
-
-                return dateResult.join('-')
-            } else {
-                let dateResult = date.split('-');
-
-                const day = dateResult[2];
-                dateResult[2] = dateResult[0];
-                dateResult[0] = day;
-                if (isRemoveYear) {
-                    dateResult = dateResult.slice(0, 2);
-                }
-
-                return dateResult.join('.')
-            }
-        }
-
-        const content: string = '<div class="window-main-col" style="margin: 12px 40px 8px 56px;">' +
-            '<div>' +
-            '<label for="trebis-key">с</label>' +
-            `<input type="date" id="trebis_date-start" style="width: 100%" value="${revertDate(dateStart)}">` +
-            '</div>' +
-            '<div>' +
-            '<label for="trebis-token">до</label>' +
-            `<input type="date" id="trebis_date-end" style="width: 100%"  value="${revertDate(dateEnd)}">` +
-            '</div>' +
-            '<div>' +
-            '<button class="nch-button--primary trebis-statistic_btn">Построить</button>' +
-            '</div>' +
-            '<div class="trebis-statistic_content" style="margin: 30px 0;"></div>' +
-            '</div>';
-        openModal(content);
-
-
-        const trebisStatRes: HTMLElement = document.querySelector('.trebis-statistic_btn');
-        trebisStatRes.onclick = async (e: MouseEvent) => {
-            e.preventDefault();
-
-            const trelloToken = getCookie('token');
-            let localStorage: ILocalStorage = null;
-            if (!trelloToken) {
-                localStorage = getLocalStorage();
-            }
-            if (trelloToken || localStorage) {
-                const trebis = new Trebis();
-                if (!trelloToken && localStorage) {
-                    const key = localStorage.key;
-                    const token = localStorage.token;
-                    trebis.initKeyToken(key, token);
-                } else {
-                    trebis.trello.isSendForApi = false;
-                    trebis.trello.trelloToken = trelloToken;
-                }
-
-                const dateStart: HTMLInputElement = document.querySelector('#trebis_date-start');
-                const dateEnd: HTMLInputElement = document.querySelector('#trebis_date-end');
-
-                const startValue = revertDate(dateStart.value, false, true);
-                const endValue = revertDate(dateEnd.value, false, true);
-
-                const orgBoards: ITrelloOrg = await trebis.trello.getOrganizations('basecontrol');
-                const statisticContent: HTMLElement = document.querySelector('.trebis-statistic_content');
-                if (orgBoards && orgBoards.boards) {
-                    statisticContent.innerHTML = '';
-                    for (const board of orgBoards.boards) {
-                        trebis.boardId = board.id;
-                        const statInfo = await trebis.getStatistic(startValue, endValue);
-                        statisticContent.innerHTML += '<div style="margin: 15px 0;">' +
-                            `<h3>Информация по доске: <u>${board.name}</u></h3>` +
-                            '<div class="u-gutter">' +
-                            `<p>Красных: ${statInfo.red}шт.</p>` +
-                            `<p>Желтых: ${statInfo.yellow}шт.</p>` +
-                            `<p>Синих: ${statInfo.blue}шт.</p>` +
-                            `<p>Зеленых: ${statInfo.green}шт.</p>` +
-                            '</div>' +
-                            '</div>';
-                    }
-                } else {
-                    statisticContent.innerHTML = '<span style="color:red">Произошла ошибка при получении информации о доске</span>';
+                    settingButton.onclick = this.settingHandler.bind(this);
                 }
             }
         }
     }
 
-    function createAdminButtons() {
-        const boardHeader = document.querySelector('#header');
-        if (boardHeader && !boardHeader.querySelector('#trebis_admin-buttons')) {
-            const isTrebisToken = !!getCookie('token');
-            let innerHtml = '<a class="board-header-btn" href="#" id="trebis_admin-button-statistic" title="Нажмите, чтобы получить статистику." aria-label="Получение статистики"><span class="icon-sm icon-information board-header-btn-icon"></span></a>';
-            if (!isTrebisToken) {
-                innerHtml += '<a class="board-header-btn" href="#" id="trebis-button-setting" title="Нажмите, чтобы изменить свои данные." aria-label="Открытие настроек"><span class="icon-sm icon-gear board-header-btn-icon"></span></a>'
-            }
-            const buttons = document.createElement('div');
-            buttons.id = 'trebis_admin-buttons';
-            buttons.innerHTML = innerHtml;
+    /**
+     * Сравниваем даты
+     * @param date1
+     * @param date2
+     * @private
+     */
+    function isEqualDate(date1: Date, date2: Date) {
+        // Можно конечно сделать проверку date1 >= date2 && date2 >= date1,
+        // но по производительности мой вариант немного быстрее
+        return (date1.getDate() === date2.getDate() &&
+            date1.getMonth() === date2.getMonth() &&
+            date1.getFullYear() === date2.getFullYear());
+    }
 
-            boardHeader.prepend(buttons);
+    /**
+     * Пытаемся распарсить строку с датой. При успехе вернется объект Date иначе null
+     * @param date
+     * @private
+     */
+    function getDate(date: string): Date {
+        /**
+         * есть проблема, когда указан диапазон дат.
+         * В таком случае возвращаем только последнюю дату
+         */
+        if (date.includes('.') && date.includes('-')) {
+            const parseDates = date.split('-');
+            let res: Date = null;
+            parseDates.forEach((parseDate) => {
+                res = getDate(parseDate);
+            })
+            return res;
+        }
 
-            const statisticButton = document.getElementById('trebis_admin-button-statistic');
-            statisticButton.onclick = statisticAdminHandler;
+        let dateValues: any[] = date.split(date.includes('.') ? '.' : '-');
 
-            if (!isTrebisToken) {
-                const settingButton = document.getElementById('trebis-button-setting');
-                settingButton.onclick = settingHandler;
+        if (dateValues[0] === undefined && dateValues[1] === undefined) {
+            return null;
+        }
+
+        for (let i = 0; i < dateValues.length; i++) {
+            dateValues[i] = Number(dateValues[i]);
+            if (isNaN(dateValues[i])) {
+                return null;
             }
         }
+        // Если год не указан, то предполагаем что ожидается текущий год
+        if (dateValues.length < 3) {
+            dateValues.push((new Date).getFullYear());
+        }
+        // значение месяца уменьшаем на 1, иначе дата определится не корректно
+        dateValues[1]--;
+
+        if (dateValues[2] < 2000) {
+            dateValues[2] += 2000;
+        }
+
+        return new Date(dateValues[2], dateValues[1], dateValues[0]);
     }
-*/
-    export function initForUser() {
+
+    /**
+     * Подготавливаем приложение для доски пользователя
+     */
+    export function initForUserBoard() {
         const app = new Application();
         app.createButtons();
-        let observer = new MutationObserver(app.createButtons);
+        const observer = new MutationObserver(app.createButtons.bind(app));
         observer.observe(document.querySelector('.board-header'), {
-            childList: true, // наблюдать за непосредственными детьми
-            subtree: true, // и более глубокими потомками
+            childList: true,
+            subtree: true
         });
     }
 
-    export function initForAdmin() {
+    /**
+     * Подготавливаем приложение для отображения общей статистики
+     * Запускается на странице basecontrol
+     */
+    export function initForOrgBoards() {
         const app = new Application();
-        app.createAdminButtons();
-        let observer = new MutationObserver(app.createButtons);
+        app.createOrgButtons();
+        const observer = new MutationObserver(app.createOrgButtons.bind(app));
         observer.observe(document.querySelector('#header'), {
-            childList: true, // наблюдать за непосредственными детьми
-            subtree: true, // и более глубокими потомками
+            childList: true,
+            subtree: true
         });
     }
 }
@@ -1513,18 +1246,41 @@ window.onload = () => {
      * При этом проверяем что есть имя доски
      */
     if (document.location.host === 'trello.com') {
-        /**
-         * Выполняется на личной карточке пользователя
-         */
-        if (document.querySelector('.board-name-input')) {
-            TREBIS.initForUser();
+        let isInitForUser = false;
+        let isInitForAdmin = false;
+        const run = () => {
+            /**
+             * Выполняется на личной карточке пользователя
+             */
+            if (document.querySelector('.board-name-input')) {
+                if (!isInitForUser) {
+                    TREBIS.initForUserBoard();
+                    isInitForUser = true;
+                }
+            } else {
+                isInitForUser = false
+            }
+            /**
+             * Выполняется на разводящей карточке
+             */
+            if (document.location.pathname === '/basecontrol') {
+                if (!isInitForAdmin) {
+                    TREBIS.initForOrgBoards();
+                    isInitForAdmin = true;
+                }
+            } else {
+                isInitForAdmin = false;
+            }
         }
+
+        run();
         /**
-         * Выполняется на разводящей карточке
+         * Не понятно как отслеживать изменение url, поэтому просто отслеживаем изменения в title
          */
-        if (document.location.pathname === '/basecontrol') {
-            TREBIS.initForAdmin();
-        }
+        const observer = new MutationObserver(run);
+        observer.observe(document.querySelector('title'), {
+            childList: true
+        });
     }
 }
 
