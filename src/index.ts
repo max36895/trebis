@@ -1242,7 +1242,7 @@ namespace TREBIS {
             if (isFull) {
                 const year = (new Date()).getFullYear();
                 res += '<div style="display: flex" class="trebis_get-server-data">';
-                for (let i = year; i > 2018; i--) {
+                for (let i = year; i >= 2020; i--) {
                     res += `<p style="${styleLink}">${i}</p>`;
                 }
                 res += '</div>';
@@ -1422,7 +1422,7 @@ namespace TREBIS {
                 if (isFull) {
                     stat = statResFull;
                 }
-                await stat('01.01.2019', Trebis.date());
+                await stat('01.01.2020', Trebis.date());
             }
             const trebisStatRes: HTMLElement = document.querySelector('.trebis-statistic_btn');
             trebisStatRes.onclick = async (e: MouseEvent) => {
