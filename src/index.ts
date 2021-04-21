@@ -756,6 +756,9 @@ namespace TREBIS {
         }
 
         protected getCorrectDate(oldDate: Date, thisDate: Date): Date {
+            if (oldDate === null && thisDate === null) {
+                return null
+            }
             const date: Date = thisDate;
 
             // @ts-ignore
@@ -797,7 +800,7 @@ namespace TREBIS {
 
             for (const list of lists) {
                 let listDate: Date = getDate(list.name)
-                if (oldListDate) {
+                if (oldListDate && listDate) {
                     listDate = this.getCorrectDate(oldListDate, listDate);
                 }
                 if (oldListDate && oldListDate < listDate) {
@@ -1366,7 +1369,7 @@ namespace TREBIS {
                     const orgBoards: ITrelloOrg = await this._trebis.trello.getOrganizations('basecontrol');
                     const statisticContent: HTMLElement = document.querySelector('.trebis-statistic_content');
                     if (orgBoards && orgBoards.boards) {
-                        statisticContent.innerHTML = '';
+                        statisticContent.innerHTML = '<h4>Информация с ${dateStart} по ${dateEnd}</h4>';
                         for (const board of orgBoards.boards) {
                             this._trebis.boardId = board.id;
                             const statInfo = await this._trebis.getStatistic(dateStart, dateEnd,
@@ -1377,7 +1380,6 @@ namespace TREBIS {
                             if (statInfo) {
                                 statisticContent.innerHTML += '<div style="margin: 15px 0;">' +
                                     `<h3>Информация по доске: <u>${board.name}</u></h3>` +
-                                    `<h4>Информация с ${dateStart} по ${dateEnd}</h4>` +
                                     '<div class="u-gutter">' +
                                     this._getTemplateResultForStat(statInfo) +
                                     '</div>' +
