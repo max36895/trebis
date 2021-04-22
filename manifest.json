@@ -1,8 +1,8 @@
 {
   "name": "TreBis",
   "short_name": "TreBis",
-  "description": "Расширение для автоматического создания списка в Trello. А также переносятся карточки предыдущего дня, расставляются нужные метки.",
-  "version": "0.2.1",
+  "description": "Расширение для автоматического создания списка в Trello и просмотра статистики.",
+  "version": "0.3",
   "content_scripts": [
     {
       "matches": [
@@ -25,7 +25,8 @@
   ],
   "permissions": [
     "https://trello.com/",
-    "https://api.trello.com/"
+    "https://api.trello.com/",
+    "https://www.maxim-m.ru/"
   ],
   "manifest_version": 2
 }
