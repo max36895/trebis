@@ -18,8 +18,14 @@ git clone https://github.com/max36895/trebis.git
 ```bash
 npm i
 ```
-Собрать проект:
+Собрать в dev режиме:
 ```bash
-npm start
+npm run dev
+```
+или
+
+Собрать в prod режиме:
+```bash
+npm run build
 ```
 После чего добавить расширение вручную в браузер.
