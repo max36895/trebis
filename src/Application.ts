@@ -114,6 +114,7 @@ export namespace TREBIS {
         public runScriptHandler(e: Event): void {
             e.preventDefault();
             const callback = async () => {
+                TrelloUI.showIndicator();
                 await this._trebis.getBoardId(this.getShortLink());
                 // Добавляем список
                 const lists: ITrelloListData[] = await this._trebis.trello.getLists(this._trebis.boardId);
@@ -135,6 +136,7 @@ export namespace TREBIS {
                 } else {
                     TrelloUI.errorNotification(`Не удалось создать список ${name}!`);
                 }
+                TrelloUI.hideIndicator();
             }
             this._getTrebisQuery(callback);
         }
@@ -348,6 +350,7 @@ export namespace TREBIS {
 
         private async _getStatisticResult(dateStart: string, dateEnd: string) {
             const callback = async () => {
+                TrelloUI.showIndicator();
                 await this._trebis.getBoardId(this.getShortLink());
                 TrelloUI.successNotification('Получение статистики');
                 const statInfo = await this._trebis.getStatistic(dateStart, dateEnd);
@@ -358,12 +361,14 @@ export namespace TREBIS {
                 } else {
                     statisticContent.innerHTML = '<p style="color: red">Произошла ошибка при получении доски!</p>';
                 }
+                TrelloUI.hideIndicator();
             };
             await this._getTrebisQuery(callback);
         }
 
         private async _getStatisticFullResult(dateStart: string, dateEnd: string) {
             const callback = async () => {
+                TrelloUI.showIndicator();
                 const orgBoards: ITrelloOrg = await this._trebis.trello.getOrganizations(Trebis.ORG_NAME);
                 const statisticContent: HTMLElement = document.querySelector(`.${this.STAT_CONTENT}`);
                 if (orgBoards && orgBoards.boards) {
@@ -388,6 +393,7 @@ export namespace TREBIS {
                 } else {
                     statisticContent.innerHTML = '<span style="color:red">Произошла ошибка при получении информации о доске!</span>';
                 }
+                TrelloUI.hideIndicator();
             }
             await this._getTrebisQuery(callback);
         }
@@ -459,6 +465,7 @@ export namespace TREBIS {
                     }
                 }
                 statisticContent.innerHTML = '';
+                TrelloUI.showIndicator();
                 if (isFull) {
                     const orgBoards: ITrelloOrg = await this._trebis.trello.getOrganizations(Trebis.ORG_NAME);
                     if (orgBoards && orgBoards.boards) {
@@ -474,6 +481,7 @@ export namespace TREBIS {
                     TrelloUI.successNotification('Получение информации');
                     await comparisonCallback();
                 }
+                TrelloUI.hideIndicator();
             }
             await this._getTrebisQuery(callback);
         }

@@ -47,8 +47,8 @@ export class TrelloUI {
             myCard.style.width = '100%';
             myCard.style.height = '100%';
             myCard.style.zIndex = '2';
-            myCard.innerHTML = '<div style="width: 100%; height: 100%;background: black; opacity: 0.5" class="trebis_close_newList"></div>' +
-                '<div style="position: absolute; top: 0;" class="js-add-list  list-wrapper mod-add"><form>' +
+            myCard.innerHTML = '<div style="width:100%; height:100%;background:black; opacity:0.5" class="trebis_close_newList"></div>' +
+                '<div style="position:absolute; top:0;" class="js-add-list  list-wrapper mod-add"><form>' +
                 `<input class="list-name-input ${this.INPUT_LIST_NAME}" value="${value}" type="text" name="name" placeholder="Ввести заголовок списка" autocomplete="off" dir="auto" maxlength="512">` +
                 '<div class="list-add-controls u-clearfix">' +
                 TrelloUI.getButton('Добавить список', `mod-list-add-button ${listNameBtn}`) +
@@ -136,6 +136,37 @@ export class TrelloUI {
         }
     }
 
+    protected static readonly TREBIS_INDICATOR = 'trebis_loading_wrapper';
+    protected static indicatorTimeOut: NodeJS.Timeout = null;
+
+    public static showIndicator() {
+        let loadingWrapper = document.getElementById(this.TREBIS_INDICATOR);
+        if (!loadingWrapper) {
+            loadingWrapper = document.createElement('div');
+            loadingWrapper.id = this.TREBIS_INDICATOR;
+            loadingWrapper.innerHTML = '<div class="trebis_loading"></div>';
+            const body = document.querySelector('body');
+            body.prepend(loadingWrapper);
+            const style = document.createElement('style');
+            style.innerHTML = `#${this.TREBIS_INDICATOR}{position:fixed;width:100%;height:100%;display:none;justify-content:center;align-items:center;z-index:20}#${this.TREBIS_INDICATOR}:after{content:'';width:100%;height:100%;background:black;opacity:0.1;top:0;left:0;position:absolute;}#${this.TREBIS_INDICATOR}.trebis_open{display:flex;}`
+                + '.trebis_loading{width:40px;height:40px;border:2px dashed blue;border-right-color:red;border-bottom-color:yellow;border-left-color:green;border-radius:50%;animation:trebis_loading 1s infinite linear;}' +
+                '@keyframes trebis_loading{0%{transform:rotate3d(0,0,0,0deg);}100%{transform:rotate3d(1,1,1.8,360deg);}}';
+            body.prepend(style);
+        }
+        loadingWrapper.classList.add('trebis_open');
+        this.indicatorTimeOut = setTimeout(() => {
+            this.hideIndicator();
+        }, 60000)
+    }
+
+    public static hideIndicator() {
+        const loadingWrapper = document.getElementById(this.TREBIS_INDICATOR);
+        if (loadingWrapper) {
+            loadingWrapper.classList.remove('trebis_open');
+            clearTimeout(this.indicatorTimeOut);
+        }
+    }
+
     public static addNotification(msg: string, style: string) {
         const notId = 'trebis_notification';
         let notification = document.getElementById(notId);
@@ -145,10 +176,10 @@ export class TrelloUI {
             const body = document.querySelector('body');
             body.prepend(notification);
             const style = document.createElement('style');
-            style.innerHTML = `#${notId}{position:fixed;bottom:10px;right:10px; z-index:22}` +
-                '.trebis_notification_card{padding:2px 5px;width: 300px;height: 40px;border-radius: 4px;display: flex;justify-content: center;align-items: center;color: white;transition: all 2s ease; opacity:1; overflow:hidden;}' +
-                /*'.trebis_notification_color-green{background: #61bd4f;}' +
-                '.trebis_notification_color-red{background: #eb5a46;}' +*/
+            style.innerHTML = `#${notId}{position:fixed;bottom:10px;right:10px;z-index:22}` +
+                '.trebis_notification_card{padding:2px 5px;width:300px;height:40px;border-radius:4px;display:flex;justify-content:center;align-items:center;color:white;transition:all 2s ease; opacity:1;overflow:hidden;}' +
+                /*'.trebis_notification_color-green{background:#61bd4f;}' +
+                '.trebis_notification_color-red{background:#eb5a46;}' +*/
                 '.trebis_notification_close{opacity:0}';
             body.prepend(style);
         }
@@ -170,6 +201,6 @@ export class TrelloUI {
     }
 
     public static errorNotification(msg: string) {
-        this.addNotification(`Ошибка: ${msg}`, 'red');
+        this.addNotification(`Ошибка:${msg}`, 'red');
     }
 }
