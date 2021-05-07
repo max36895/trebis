@@ -13,7 +13,7 @@
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
-      "*": ["node_modules/*", "src/types/*"]
+      "*": ["node_modules/*"]
     }
   },
   "include": [
@@ -22,7 +22,6 @@
   "exclude": [
     "node_modules"
   ],
-  "types": [ "mocha", "chai" ],
   "typeRoots": [
     "./node_modules/@types"
   ]
