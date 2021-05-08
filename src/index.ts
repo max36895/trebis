@@ -44,14 +44,14 @@ window.onload = () => {
                 }
             }
             /**
-             * Выполняется на разводящей карточке
+             * Выполняется если есть шапка
              */
             if (document.location.pathname.includes(Trebis.ORG_NAME)) {
                 if (!document.getElementById(App.Application.ORG_SELECTOR)) {
                     trebisInitForOrgBoards();
                 }
             }
-        }
+        };
 
         run();
 
@@ -63,4 +63,4 @@ window.onload = () => {
             childList: true
         });
     }
-}
+};

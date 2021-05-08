@@ -73,9 +73,9 @@ export class Trebis {
             this.labels = {};
             labels.forEach((label) => {
                 this.labels[label.color] = label.id;
-            })
+            });
         } else {
-            this._logs('initLabels(): Не указан идентификатор доски!');
+            this._logs('initLabels(): Не указан идентификатор доски');
         }
     }
 
@@ -88,7 +88,7 @@ export class Trebis {
                 return true;
             }
         } else {
-            this._logs('createList(): Не указан идентификатор доски!');
+            this._logs('createList(): Не указан идентификатор доски');
         }
         return false;
     }
@@ -102,9 +102,8 @@ export class Trebis {
         const parseName: Date = utils.getDate(name);
         for (const list of lists) {
             const parseListName = utils.getDate(list.name);
-            if (name === list.name) {
-                return list.id;
-            } else if ((parseListName && parseName) && utils.isEqualDate(parseListName, parseName)) {
+            if (name === list.name ||
+                ((parseListName && parseName) && utils.isEqualDate(parseListName, parseName))) {
                 return list.id;
             }
         }
@@ -115,7 +114,7 @@ export class Trebis {
      * Получаем ид списка для текущей даты. Если списка нет, то создаем его.
      * Также получаем ид списка с предыдущей даты
      *
-     * При этом для оптимизации, ищем список за последние 15 дней.
+     * При этом для оптимизации, ищем список за последние 25 дней.
      *
      * @param lists
      * @protected
@@ -133,21 +132,21 @@ export class Trebis {
             const name: string = utils.date(Date.now() - utils.getDayInSec(day));
             this.lastListId = await this.getListId(lists, name);
             day++;
-            if (day > 15) {
+            if (day > 25) {
                 break;
             }
         } while (!this.lastListId);
     }
 
-    public async createCard(data, labels): Promise<void> {
-        const req = await this.trello.addCard(data);
+    public async createCard(data, labels, copyCardId?: string): Promise<void> {
+        const req = await this.trello.copyCard(data, copyCardId);
         const cardId = req.data.id || null;
         if (cardId) {
             for (const label of labels) {
                 await this.trello.addLabels(cardId, label);
             }
         } else {
-            this._logs('CreateCard(): Не удалось создать карточку!');
+            this._logs('CreateCard(): Не удалось создать карточку');
         }
     }
 
@@ -169,10 +168,8 @@ export class Trebis {
                     if (data.name) {
                         const names = data.name.split(' ');
                         names.forEach((name) => {
-                            if (utils.isLink(name)) {
-                                if (!data.desc.includes(name)) {
-                                    data.desc = `[Ссылка на задачу](${name})\n${data.desc}`;
-                                }
+                            if (utils.isLink(name) && !data.desc.includes(name)) {
+                                data.desc = `[Ссылка на задачу](${name})\n${data.desc}`;
                             }
                         });
                     }
@@ -207,7 +204,7 @@ export class Trebis {
                                 desc: lastCard.desc
                             };
                             addedLabels.push(this.labels.yellow);
-                            await this.createCard(data, addedLabels);
+                            await this.createCard(data, addedLabels, lastCard.id);
                             await this.trello.addLabels(lastCard.id, this.labels.red);
                             cardCount++;
                         }
@@ -215,10 +212,10 @@ export class Trebis {
                 }
                 return cardCount;
             } else {
-                this._logs('updateCard(): Не удалось найти карточку за предыдущий рабочий день!');
+                this._logs('updateCard(): Не удалось найти карточку за предыдущий рабочий день');
             }
         } else {
-            this._logs('updateCard(): Не указан идентификатор доски!');
+            this._logs('updateCard(): Не указан идентификатор доски');
         }
         return null;
     }
@@ -229,7 +226,7 @@ export class Trebis {
      */
     public async removeOldLists(lists: ITrelloListData[]): Promise<number> {
         let day = 30;
-        let count = 0
+        let count = 0;
         // todo придумать как сделать сейчас не понятно как корректно отфильтровать и удалять карточки
         // Сейчас оставляю первые 30 карточек + может быть бага с годами...
         lists.forEach((list) => {
@@ -243,7 +240,7 @@ export class Trebis {
         return count
     }
 
-    protected getCorrectDate(oldDate: Date, thisDate: Date): Date {
+    private getCorrectDate(oldDate: Date, thisDate: Date): Date {
         if (oldDate === null && thisDate === null) {
             return null
         }
@@ -266,7 +263,7 @@ export class Trebis {
     public async getStatistic(startValue: string, endValue: string,
                               options: { isSaveOnServer: boolean, boardName: string } = null): Promise<ITrebisStatistic> {
         if (!this.boardId) {
-            this._logs('getStatistic(): е указан идентификатор доски!');
+            this._logs('getStatistic(): Не указан идентификатор доски');
             return null;
         }
         const lists: ITrelloListData[] = await this.trello.getLists(this.boardId);
@@ -299,9 +296,7 @@ export class Trebis {
                     listDate.setFullYear(oldListDate.getFullYear() - 1);
                 }
             }
-            if (list.name === endValue || (
-                (endDate && listDate) && (listDate <= endDate)
-            )) {
+            if (list.name === endValue || ((endDate && listDate) && (listDate <= endDate))) {
                 isStart = true;
             }
 
@@ -315,7 +310,8 @@ export class Trebis {
                         if (['green', 'blue', 'red', 'yellow'].includes(label.color)) {
                             res[label.color] += 1;
                             if (options && options.isSaveOnServer) {
-                                // todo Продумать корректное поведение. Если не удалось получить дату, а метки есть, они уходят в никуда...
+                                // todo Продумать корректное поведение.
+                                // Если не удалось получить дату, а метки есть, они уходят в никуда...
                                 // Временное решение - смотреть на предыдущую дату если текущую определить не удалось.
                                 let tmpListDate = listDate;
                                 if (!tmpListDate) {
@@ -353,9 +349,7 @@ export class Trebis {
                 }
             }
 
-            if (list.name === startValue || (
-                (startDate && listDate) && utils.isEqualDate(startDate, listDate)
-            )) {
+            if (list.name === startValue || ((startDate && listDate) && utils.isEqualDate(startDate, listDate))) {
                 break;
             }
             oldListDate = listDate;
@@ -371,8 +365,8 @@ export class Trebis {
         return res;
     }
 
-    protected _logs(error: string): void {
+    private _logs(error: string): void {
         console.warn(error);
-        TrelloUI.errorNotification(error);
+        TrelloUI.errorNotification('Trebis.' + error);
     }
 }

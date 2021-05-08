@@ -7,8 +7,6 @@ import {IGetParams, IRequestSend} from "../interfaces";
  */
 export class Request {
     public static readonly HEADER_AP_JSON: Record<string, string> = {'Content-Type': 'application/json'};
-    public static readonly HEADER_FORM_DATA: Record<string, string> = {'Content-Type': 'multipart/form-data'};
-
     /**
      * Адрес, на который отправляется запрос.
      */

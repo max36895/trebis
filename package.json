@@ -9,9 +9,9 @@
   "license": "MIT",
   "main": "dist/index.js",
   "scripts": {
-    "start": "shx rm -rf dist && tsc",
+    "start": "shx rm -rf dist && webpack",
     "build": "webpack",
-    "dev": "NODE_ENV='dev' webpack"
+    "dev": "webpack --mode development"
   },
   "engines": {
     "node": ">=12"
@@ -27,5 +27,5 @@
   "dependencies": {
     "typescript": "^4.1.5"
   },
-  "version": "0.5"
+  "version": "0.6.0"
 }

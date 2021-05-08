@@ -26,12 +26,15 @@ const config = {
                 exclude: /node_modules/,
             }
         ]
-    },
-    mode: ((process.env.NODE_ENV === 'production' || !process.env.NODE_ENV) ? 'production' : 'development')
+    }
 };
 
-if (process.env.NODE_ENV && process.env.NODE_ENV !== 'production') {
+const mode = process.argv[4] || 'production';
+if (mode !== 'production') {
     config.devtool = 'inline-source-map';
+    config.mode = 'development';
+} else {
+    config.mode = 'production';
 }
 
 module.exports = config;
