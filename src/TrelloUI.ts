@@ -1,7 +1,7 @@
 import {ITrelloUIButton, ITrelloUiCallback} from "./interfaces";
 
 export class TrelloUI {
-    public static INPUT_LIST_NAME = 'trebis_new-listName'
+    public static INPUT_LIST_NAME = 'trebis_new-listName';
 
     public static getHeaderButton(options: ITrelloUIButton) {
         const {id, title = 'title', label = 'label', icon} = options;
@@ -18,7 +18,8 @@ export class TrelloUI {
             boardHeader.prepend(element);
             if (callbacks) {
                 callbacks.forEach((callback) => {
-                    const el: HTMLElement = (callback.id ? document.getElementById(callback.id) : document.querySelector(`.${callback.class}`));
+                    const el: HTMLElement = (callback.id ? document.getElementById(callback.id) :
+                        document.querySelector(`.${callback.class}`));
                     if (el) {
                         el.onclick = callback.callback
                     }
@@ -57,14 +58,14 @@ export class TrelloUI {
             board.prepend(myCard);
             const close = (e: Event) => {
                 e.preventDefault();
-                const newList = document.getElementById('trebis_add_newList');
+                const newList = document.getElementById(myCard.id);
                 if (closeCallback) {
                     closeCallback(e);
                 }
                 if (newList) {
                     board.removeChild(newList);
                 }
-            }
+            };
 
             const closeList: HTMLElement = document.querySelector('.trebis_close_newList');
             const closeListBtn: HTMLElement = document.querySelector('.trebis_close_newList_btn');
@@ -86,7 +87,6 @@ export class TrelloUI {
                     close(e);
                 }
             }
-
             return true;
         }
         return false;
@@ -106,12 +106,12 @@ export class TrelloUI {
                 windowContent.innerHTML = '<div class="window-header"><div class="window-title">' +
                     `<h2 class="card-detail-title" dir="auto">${title}</h2></div></div>`;
             }
-            windowContent.innerHTML += content
+            windowContent.innerHTML += content;
             windowWrapper.append(windowContent);
 
             const dialogCloseButton: HTMLElement = document.querySelector('.dialog-close-button');
             if (dialogCloseButton) {
-                dialogCloseButton.onclick = this.closeModal.bind(this);
+                dialogCloseButton.onclick = this.closeModal;
             }
             const windowOverlay: HTMLElement = document.querySelector('.window-overlay');
             if (windowOverlay) {
@@ -186,14 +186,14 @@ export class TrelloUI {
         const notCard = document.createElement('div');
         notCard.classList.add('trebis_notification_card', `card-label-${style}`);
         notCard.title = msg;
-        notCard.innerHTML = msg
+        notCard.innerHTML = msg;
         notification.prepend(notCard);
         setTimeout(() => {
             notCard.classList.add('trebis_notification_close');
             setTimeout(() => {
                 notification.removeChild(notCard);
-            }, 1500);
-        }, 3500);
+            }, 1000);
+        }, 4000);
     }
 
     public static successNotification(msg: string) {

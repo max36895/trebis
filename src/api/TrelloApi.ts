@@ -33,9 +33,17 @@ export class TrelloApi {
     protected _getPost(data: ITrelloData): ITrelloData {
         if (this.isSendForApi) {
             return {...{key: this.key, token: this.token}, ...data};
-        } else {
-            return {...{token: this.trelloToken}, ...data};
         }
+        return {...{token: this.trelloToken}, ...data};
+    }
+
+    protected _getQuery(data: ITrelloData = {}, prefix: string = '&'): string {
+        let query: string = '';
+        if (this.isSendForApi) {
+            query = prefix + Request.getQueryString(this._getPost(data));
+        }
+        this._request.post = null;
+        return query;
     }
 
     /**
@@ -43,12 +51,7 @@ export class TrelloApi {
      * @param orgName
      */
     public async getOrganizations(orgName: string): Promise<ITrelloOrg> {
-        let query: string = '';
-        if (this.isSendForApi) {
-            query = '&' + Request.getQueryString(this._getPost({}));
-        }
-        this._request.post = null;
-        this._request.url = this._getUrl() + `/1/Organizations/${orgName}?boards=open&board_fields=name%2Cclosed%2CdateLastActivity%2CdateLastView%2CdatePluginDisable%2CenterpriseOwned%2CidOrganization%2Cprefs%2CpremiumFeatures%2CshortLink%2CshortUrl%2Curl%2CcreationMethod%2CidEnterprise%2CidTags&board_starCounts=organization&board_membershipCounts=active&fields=name%2CdisplayName%2Cproducts%2Cprefs%2CpremiumFeatures%2ClogoHash%2CidEnterprise%2Ctags%2Climits%2Ccredits%2Cdesc%2CdescData%2Cwebsite%2Climits%2CbillableCollaboratorCount&paidAccount=true&paidAccount_fields=products%2Cstanding%2CbillingDates%2CexpirationDates%2CneedsCreditCardUpdate%2CdateFirstSubscription&enterprise=true&memberships=active&members=all&tags=true&billableCollaboratorCount=true` + query;
+        this._request.url = this._getUrl() + `/1/Organizations/${orgName}?boards=open&board_fields=name%2Cclosed%2CdateLastActivity%2CdateLastView%2CdatePluginDisable%2CenterpriseOwned%2CidOrganization%2Cprefs%2CpremiumFeatures%2CshortLink%2CshortUrl%2Curl%2CcreationMethod%2CidEnterprise%2CidTags&board_starCounts=organization&board_membershipCounts=active&fields=name%2CdisplayName%2Cproducts%2Cprefs%2CpremiumFeatures%2ClogoHash%2CidEnterprise%2Ctags%2Climits%2Ccredits%2Cdesc%2CdescData%2Cwebsite%2Climits%2CbillableCollaboratorCount&paidAccount=true&paidAccount_fields=products%2Cstanding%2CbillingDates%2CexpirationDates%2CneedsCreditCardUpdate%2CdateFirstSubscription&enterprise=true&memberships=active&members=all&tags=true&billableCollaboratorCount=true${this._getQuery()}`;
         const send = await this._request.send();
         return send.data;
     }
@@ -57,12 +60,7 @@ export class TrelloApi {
      * Получение всех досок пользователя
      */
     public async getBoards() {
-        let query: string = '';
-        if (this.isSendForApi) {
-            query = '&' + Request.getQueryString(this._getPost({}));
-        }
-        this._request.post = null;
-        this._request.url = this._getUrl() + '/1/members/me/boards?fields=name%2CshortLink' + query;
+        this._request.url = `${this._getUrl()}/1/members/me/boards?fields=name%2CshortLink${this._getQuery()}`;
         const send = await this._request.send();
         return send.data;
     }
@@ -72,12 +70,7 @@ export class TrelloApi {
      * @param boardId
      */
     public async getLists(boardId: string): Promise<ITrelloListData[]> {
-        let query: string = '';
-        if (this.isSendForApi) {
-            query = '?' + Request.getQueryString(this._getPost({}));
-        }
-        this._request.post = null;
-        this._request.url = `${this._getUrl()}/1/boards/${boardId}/lists` + query;
+        this._request.url = `${this._getUrl()}/1/boards/${boardId}/lists${this._getQuery({}, '?')}`;
         const send = await this._request.send();
         return send.data;
     }
@@ -118,12 +111,7 @@ export class TrelloApi {
      * @param listId
      */
     public async getCards(listId: string): Promise<ITrelloCardData[]> {
-        let query: string = '';
-        if (this.isSendForApi) {
-            query = '&' + Request.getQueryString(this._getPost({}));
-        }
-        this._request.post = null;
-        this._request.url = `${this._getUrl()}/1/lists/${listId}/cards?fields=all` + query;
+        this._request.url = `${this._getUrl()}/1/lists/${listId}/cards?fields=all${this._getQuery()}`;
         const send = await this._request.send();
         return send.data;
     }
@@ -133,12 +121,7 @@ export class TrelloApi {
      * @param boardId
      */
     public async getLabels(boardId: string): Promise<ITrebisLabel[]> {
-        let query: string = '';
-        if (this.isSendForApi) {
-            query = '?' + Request.getQueryString(this._getPost({}));
-        }
-        this._request.post = null;
-        this._request.url = `${this._getUrl()}/1/boards/${boardId}/labels` + query;
+        this._request.url = `${this._getUrl()}/1/boards/${boardId}/labels${this._getQuery({}, '?')}`;
         const send = await this._request.send();
         return send.data;
     }
@@ -156,12 +139,7 @@ export class TrelloApi {
 
     public async deleteLabels(cardId: string, labelId: string): Promise<IRequestSend> {
         this._request.customRequest = "DELETE";
-        let query: string = '';
-        if (this.isSendForApi) {
-            query = '?' + Request.getQueryString(this._getPost({}));
-        }
-        this._request.url = `${this._getUrl()}/1/cards/${cardId}/idLabels/${labelId}` + query;
-        this._request.post = null;
+        this._request.url = `${this._getUrl()}/1/cards/${cardId}/idLabels/${labelId}${this._getQuery({}, '?')}`;
         const res = await this._request.send();
         this._request.customRequest = null;
         return res;
@@ -191,5 +169,18 @@ export class TrelloApi {
         this._request.url = this._getUrl() + "/1/cards";
         this._request.post = this._getPost(data);
         return await this._request.send();
+    }
+
+    /**
+     * Копирование карточки
+     * @param data
+     * @param copyCardId
+     */
+    public async copyCard(data: ITrelloData, copyCardId: string): Promise<ITrelloCardData> {
+        if (copyCardId) {
+            data.idCardSource = copyCardId;
+            data.keepFromSource = ["start", "due", "comments", "attachments", "checklists", "members", "stickers"];
+        }
+        return await this.addCard(data);
     }
 }

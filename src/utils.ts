@@ -39,7 +39,7 @@ export namespace TREBIS {
             return res;
         }
 
-        let dateValues: any[] = date.split(date.includes('.') ? '.' : '-');
+        const dateValues: any[] = date.split(date.includes('.') ? '.' : '-');
 
         if (dateValues[0] === undefined && dateValues[1] === undefined) {
             return null;
@@ -53,7 +53,7 @@ export namespace TREBIS {
         }
         // Если год не указан, то предполагаем что используется текущий год
         if (dateValues.length < 3) {
-            dateValues.push((new Date).getFullYear());
+            dateValues.push((new Date()).getFullYear());
         }
         // значение месяца уменьшаем на 1, иначе дата определится не корректно
         dateValues[1]--;
@@ -76,8 +76,8 @@ export namespace TREBIS {
             time = Date.now();
         }
         const date = new Date(time);
-        let day = date.getDate();
-        let month = date.getMonth() + 1;
+        const day = date.getDate();
+        const month = date.getMonth() + 1;
 
         let result;
         if (day < 10) {
@@ -131,7 +131,7 @@ export namespace TREBIS {
      * Получение даты начала и конца текущего месяца. В качестве конца месяца выбирается текущая дата.
      */
     export function getThisMonth(): IDateRange {
-        let startDate = date().split('.');
+        const startDate = date().split('.');
         startDate[0] = '01';
 
         return {
@@ -145,7 +145,7 @@ export namespace TREBIS {
      */
     export function getOldMonth(): IDateRange {
         const oldMonth: Date = new Date();
-        let startDate = date(oldMonth.setMonth(oldMonth.getMonth() - 1)).split('.');
+        const startDate = date(oldMonth.setMonth(oldMonth.getMonth() - 1)).split('.');
         startDate[0] = '01';
         const dateEnd = new Date(oldMonth.getFullYear(), oldMonth.getMonth() + 1, 0);
 
@@ -157,5 +157,13 @@ export namespace TREBIS {
 
     export function getDayInSec(day: number): number {
         return 3600 * 24 * 1000 * day;
+    }
+
+    export function downloadAsFile(fileName: string, data: string, options: BlobPropertyBag = {type: 'application/json'}) {
+        const a = document.createElement("a");
+        const file = new Blob([data], options);
+        a.href = URL.createObjectURL(file);
+        a.download = fileName;
+        a.click();
     }
 }

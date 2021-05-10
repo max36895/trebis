@@ -113,7 +113,7 @@ export interface ITrelloUIButton {
 
 export interface ITrelloUiCallback {
     id?: string;
-    class?: string;
+    'class'?: string;
     callback: () => {};
 }
 
