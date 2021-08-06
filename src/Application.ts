@@ -218,10 +218,10 @@ export namespace TREBIS {
                 '<span>Узнать ключ и токен:<a href="https://trello.com/app-key" target="_blank">тут</a></span>' +
                 '<form action="#" id="trebis-data"><div>' +
                 '<label for="trebis-key">key</label>' +
-                `<input type="text" id="trebis-key" style="width: 100%" value="${key}">` +
+                `<input type="text" id="trebis-key" style="width:100%" value="${key}">` +
                 '</div><div>' +
                 '<label for="trebis-token">token</label>' +
-                `<input type="text" id="trebis-token" style="width: 100%"  value="${token}">` +
+                `<input type="text" id="trebis-token" style="width:100%"  value="${token}">` +
                 '</div><div>' +
                 '<button class="nch-button--primary">Сохранить</button>' +
                 '</div></form></div>';

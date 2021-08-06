@@ -2,7 +2,7 @@
   "name": "TreBis",
   "short_name": "TreBis",
   "description": "Расширение для автоматического создания списка в Trello и просмотра статистики.",
-  "version": "0.6",
+  "version": "0.6.1",
   "content_scripts": [
     {
       "matches": [
