@@ -98,7 +98,7 @@ export namespace TREBIS {
                     const name = listName.value || utils.date();
                     this._trebis.createList(name).then(res => {
                         if (res) {
-                            TrelloUI.successNotification(`Список ${name} успешно создан`);
+                            TrelloUI.successNotification(`Список ${name} создан`);
                         } else {
                             TrelloUI.errorNotification(`Не удалось создать список ${name}`);
                         }
@@ -133,7 +133,7 @@ export namespace TREBIS {
                     // Обновляем карточки
                     const count = await this._trebis.updateCard(lists);
                     if (count !== null) {
-                        TrelloUI.successNotification(`Список ${name} успешно создан. Перенесено карточек: ${count}`);
+                        TrelloUI.successNotification(`Список ${name} создан. Перенесено карточек: ${count}`);
                     }
                 } else {
                     TrelloUI.errorNotification(`Не удалось создать список ${name}`);
@@ -167,7 +167,7 @@ export namespace TREBIS {
                         await this._trebis.getBoardId(this.getShortLink());
                         let lists: ITrelloListData[] = await this._trebis.trello.getLists(this._trebis.boardId);
                         const count = await this._trebis.removeOldLists(lists);
-                        TrelloUI.successNotification(`Было удалено списков: ${count}`);
+                        TrelloUI.successNotification(`Удалено списков: ${count}`);
                         lists = null;
                     };
                     this._getTrebisQuery(callback)
@@ -311,7 +311,7 @@ export namespace TREBIS {
             }
 
             if (!res) {
-                res = '<p style="color:red">На сервере нет сохраненных данных!</p>';
+                res = '<p style="color:red">Нет сохраненных данных!</p>';
             }
             return `<div>${res}</div>`;
         }
@@ -369,7 +369,7 @@ export namespace TREBIS {
             const callback = async () => {
                 TrelloUI.showIndicator();
                 await this._trebis.getBoardId(this.getShortLink());
-                TrelloUI.successNotification('Получение статистики');
+                TrelloUI.successNotification('Получение данных');
                 const statInfo = await this._trebis.getStatistic(dateStart, dateEnd);
                 const statisticContent: HTMLElement = document.querySelector(`.${this.STAT_CONTENT}`);
                 if (statInfo) {
@@ -393,7 +393,7 @@ export namespace TREBIS {
                     statisticContent.innerHTML = `<h4>Информация с ${dateStart} по ${dateEnd}</h4>`;
                     for (const board of orgBoards.boards) {
                         this._trebis.boardId = board.id;
-                        TrelloUI.successNotification(`Получение статистики по доске: ${board.name}`);
+                        TrelloUI.successNotification(`Получение данных по доске: ${board.name}`);
                         const statInfo = await this._trebis.getStatistic(dateStart, dateEnd,
                             {
                                 boardName: board.name,
@@ -491,13 +491,13 @@ export namespace TREBIS {
                         for (const board of orgBoards.boards) {
                             this._trebis.boardId = board.id;
                             statisticContent.innerHTML += `<h3>Информация по доске: <u>${board.name}</u></h3>`;
-                            TrelloUI.successNotification(`Получение информации по доске: ${board.name}`);
+                            TrelloUI.successNotification(`Получение данных по доске: ${board.name}`);
                             await comparisonCallback();
                         }
                     }
                 } else {
                     await this._trebis.getBoardId(this.getShortLink());
-                    TrelloUI.successNotification('Получение информации');
+                    TrelloUI.successNotification('Получение данных');
                     await comparisonCallback();
                 }
                 TrelloUI.hideIndicator();
@@ -574,8 +574,8 @@ export namespace TREBIS {
                 const isTrebisToken = !!this.getCookie('token');
                 let innerHtml = TrelloUI.getHeaderButton({
                     id: addListName,
-                    title: 'Нажмите для создания пустого списка',
-                    label: 'Создать пустой список',
+                    title: 'Нажмите для создания списка',
+                    label: 'Создать список',
                     icon: 'add'
                 });
                 innerHtml += TrelloUI.getHeaderButton({
@@ -639,7 +639,7 @@ export namespace TREBIS {
                 const isTrebisToken = !!this.getCookie('token');
                 let innerHtml = TrelloUI.getHeaderButton({
                     id: statisticName,
-                    title: 'Нажмите для получения статистики по всем участникам',
+                    title: 'Нажмите для получения общей статистики',
                     label: 'Получение общей статистики',
                     icon: 'information'
                 });
