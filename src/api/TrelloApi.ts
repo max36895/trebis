@@ -1,6 +1,14 @@
 import {Request} from "./Request";
 import {TREBIS as utils} from "../utils";
-import {IRequestSend, ITrebisLabel, ITrelloCardData, ITrelloData, ITrelloListData, ITrelloOrg} from "../interfaces";
+import {
+    IRequestSend,
+    ITrebisLabel,
+    ITrelloCardData,
+    ITrelloData,
+    ITrelloListData,
+    ITrelloOrg,
+    IGetParams
+} from "../interfaces";
 
 /**
  * Класс отвечающий за работу с trello api
@@ -41,6 +49,11 @@ export class TrelloApi {
         let query: string = '';
         if (this.isSendForApi) {
             query = prefix + Request.getQueryString(this._getPost(data));
+        } else if (data) {
+            const getString = Request.getQueryString(data);
+            if (getString) {
+                query = prefix + getString;
+            }
         }
         this._request.post = null;
         return query;
@@ -51,7 +64,7 @@ export class TrelloApi {
      * @param orgName
      */
     public async getOrganizations(orgName: string): Promise<ITrelloOrg> {
-        this._request.url = this._getUrl() + `/1/Organizations/${orgName}?boards=open&board_fields=name%2Cclosed%2CdateLastActivity%2CdateLastView%2CdatePluginDisable%2CenterpriseOwned%2CidOrganization%2Cprefs%2CpremiumFeatures%2CshortLink%2CshortUrl%2Curl%2CcreationMethod%2CidEnterprise%2CidTags&board_starCounts=organization&board_membershipCounts=active&fields=name%2CdisplayName%2Cproducts%2Cprefs%2CpremiumFeatures%2ClogoHash%2CidEnterprise%2Ctags%2Climits%2Ccredits%2Cdesc%2CdescData%2Cwebsite%2Climits%2CbillableCollaboratorCount&paidAccount=true&paidAccount_fields=products%2Cstanding%2CbillingDates%2CexpirationDates%2CneedsCreditCardUpdate%2CdateFirstSubscription&enterprise=true&memberships=active&members=all&tags=true&billableCollaboratorCount=true${this._getQuery()}`;
+        this._request.url = this._getUrl() + `/1/Organizations/${orgName}?boards=open&board_fields=name%2CshortLink%2CshortUrl&fields=name${this._getQuery()}`;
         const send = await this._request.send();
         return send.data;
     }
@@ -68,9 +81,10 @@ export class TrelloApi {
     /**
      * Получение всех списков пользователя на определенно доске
      * @param boardId
+     * @param data
      */
-    public async getLists(boardId: string): Promise<ITrelloListData[]> {
-        this._request.url = `${this._getUrl()}/1/boards/${boardId}/lists${this._getQuery({}, '?')}`;
+    public async getLists(boardId: string, data: IGetParams = {}): Promise<ITrelloListData[]> {
+        this._request.url = `${this._getUrl()}/1/boards/${boardId}/lists${this._getQuery(data, '?')}`;
         const send = await this._request.send();
         return send.data;
     }

@@ -2,45 +2,60 @@ import {TREBIS as App} from "./Application";
 import {TrelloUI} from "./TrelloUI";
 
 /**
- * Подготавливаем приложение для доски пользователя
+ * Отслеживание изменений у элемента
+ * @param callback
+ * @param selector
  */
-function trebisInitForUserBoard() {
-    const app = new App.Application();
-    app.createButtons();
-    const observer = new MutationObserver(app.createButtons.bind(app));
-    observer.observe(document.querySelector(`.${TrelloUI.BOARD_HEADER}`), {
+function trebisInitMutationObserver(callback: MutationCallback, selector: Element): MutationObserver {
+    const observer = new MutationObserver(callback);
+    observer.observe(selector, {
         childList: true,
         subtree: true
     });
+    return observer
+}
+
+/**
+ * Подготавливаем приложение для доски пользователя
+ */
+function trebisInitForUserBoard(app: App.Application): MutationObserver {
+    app.createButtons();
+    return trebisInitMutationObserver(app.createButtons.bind(app), document.querySelector(`.${TrelloUI.BOARD_HEADER}`));
 }
 
 /**
  * Подготавливаем приложение для отображения общей статистики
  */
-function trebisInitForOrgBoards() {
-    const app = new App.Application();
+function trebisInitForOrgBoards(app: App.Application): MutationObserver {
     app.createOrgButtons();
-    const observer = new MutationObserver(app.createOrgButtons.bind(app));
-    observer.observe(document.getElementById(TrelloUI.HEADER_ID), {
-        childList: true,
-        subtree: true
-    });
+    return trebisInitMutationObserver(app.createOrgButtons.bind(app), document.getElementById(TrelloUI.HEADER_ID));
 }
 
 window.onload = () => {
     if (document.location.host === 'trello.com') {
+        const app = new App.Application();
+        let userObserver: MutationObserver = null;
+        let orgObserver: MutationObserver = null;
         const run = () => {
             /**
              * Выполняется на личной карточке пользователя
              */
             if (document.querySelector('.board-name-input') && !document.getElementById(App.Application.SELECTOR)) {
-                trebisInitForUserBoard();
+                if (userObserver) {
+                    userObserver.disconnect();
+                    userObserver = null;
+                }
+                userObserver = trebisInitForUserBoard(app);
             }
             /**
              * Выполняется если есть шапка
              */
             if (document.getElementById(TrelloUI.HEADER_ID) && !document.getElementById(App.Application.ORG_SELECTOR)) {
-                trebisInitForOrgBoards();
+                if (orgObserver) {
+                    orgObserver.disconnect();
+                    orgObserver = null;
+                }
+                orgObserver = trebisInitForOrgBoards(app);
             }
         };
 

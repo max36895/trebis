@@ -2,7 +2,14 @@ import {TrelloApi} from "./api/TrelloApi";
 import {ServerApi} from "./api/ServerApi";
 import {TREBIS as utils} from "./utils";
 import {TrelloUI} from "./TrelloUI";
-import {IServerApiData, ITrebisLabel, ITrebisStatistic, ITrelloCardData, ITrelloListData} from "./interfaces";
+import {
+    IServerApiData,
+    ITrebisLabel,
+    ITrebisListId,
+    ITrebisStatistic,
+    ITrelloCardData,
+    ITrelloListData
+} from "./interfaces";
 
 export class Trebis {
     public static ORG_NAME = 'basecontrol';
@@ -11,8 +18,8 @@ export class Trebis {
     protected labels: ITrebisLabel = null;
 
     public boardId: string = null;
-    public thisListId: string = null;
-    protected lastListId: string = null;
+    public thisListId: ITrebisListId = null;
+    protected lastListId: ITrebisListId = null;
 
     public constructor(key: string = null, token: string = null) {
         this.trello = new TrelloApi();
@@ -35,6 +42,12 @@ export class Trebis {
      * @param shortLink
      */
     public async getBoardId(shortLink: string): Promise<string> {
+        const key = shortLink + '_board-id';
+        const localBoardId = utils.getLocalStorage(key);
+        if (localBoardId) {
+            this.boardId = localBoardId;
+            return localBoardId;
+        }
         /**
          * Получаем все доски пользователя
          */
@@ -60,20 +73,34 @@ export class Trebis {
                 });
             }
         }
+        if (this.boardId) {
+            utils.setLocalStorage(key, this.boardId);
+        }
 
         return this.boardId;
+    }
+
+    public async getLists(boardId?: string): Promise<ITrelloListData[]> {
+        return await this.trello.getLists(boardId || this.boardId, {cards: 'open'});
     }
 
     /**
      * Получаем все метки
      */
-    public async initLabels(): Promise<void> {
+    public async initLabels(trelloLabels?: ITrebisLabel[]): Promise<void> {
+        const key = `${this.boardId}_labels`;
+        const labels = utils.getLocalStorage(key);
+        if (labels) {
+            this.labels = JSON.parse(labels)
+            return;
+        }
         if (this.boardId) {
-            const labels = await this.trello.getLabels(this.boardId);
+            const labels = trelloLabels || await this.trello.getLabels(this.boardId);
             this.labels = {};
             labels.forEach((label) => {
                 this.labels[label.color] = label.id;
             });
+            utils.setLocalStorage(key, JSON.stringify(this.labels));
         } else {
             this._logs('initLabels(): Не указан идентификатор доски');
         }
@@ -84,7 +111,7 @@ export class Trebis {
         if (this.boardId) {
             const result = await this.trello.addList({idBoard: this.boardId, name});
             if (result.status && result.data) {
-                this.thisListId = result.data.id || null;
+                this.thisListId = {id: result.data.id, index: null};
                 return true;
             }
         } else {
@@ -98,14 +125,16 @@ export class Trebis {
      * @param lists
      * @param name
      */
-    public getListId(lists: ITrelloListData[], name: string): string {
+    public getListId(lists: ITrelloListData[], name: string): ITrebisListId {
         const parseName: Date = utils.getDate(name);
+        let index = 0;
         for (const list of lists) {
             const parseListName = utils.getDate(list.name);
             if (name === list.name ||
                 ((parseListName && parseName) && utils.isEqualDate(parseListName, parseName))) {
-                return list.id;
+                return {id: list.id, index};
             }
+            index++;
         }
         return null;
     }
@@ -121,7 +150,7 @@ export class Trebis {
      */
     protected async initListId(lists: ITrelloListData[]): Promise<void> {
         if (!this.thisListId) {
-            this.thisListId = await this.getListId(lists, utils.date());
+            this.thisListId = this.getListId(lists, utils.date());
             if (this.thisListId) {
                 await this.createList();
             }
@@ -130,7 +159,7 @@ export class Trebis {
         let day = 1;
         do {
             const name: string = utils.date(Date.now() - utils.getDayInSec(day));
-            this.lastListId = await this.getListId(lists, name);
+            this.lastListId = this.getListId(lists, name);
             day++;
             if (day > 25) {
                 break;
@@ -150,17 +179,27 @@ export class Trebis {
         }
     }
 
-    public async updateCard(): Promise<number> {
+    public async updateCard(trelloLists?: ITrelloListData[]): Promise<number> {
         if (this.boardId) {
-            const lists: ITrelloListData[] = await this.trello.getLists(this.boardId);
+            const lists: ITrelloListData[] = trelloLists || (await this.getLists());
             await this.initListId(lists);
             let cardCount = 0;
 
             if (this.lastListId) {
-                const thisCards: ITrelloCardData[] = await this.trello.getCards(this.thisListId);
-                const lastCards: ITrelloCardData[] = await this.trello.getCards(this.lastListId);
+                const initCards = async (listId: ITrebisListId): Promise<ITrelloCardData[]> => {
+                    if (listId.index === null) {
+                        return [];
+                    } else if (typeof lists[listId.index] !== 'undefined') {
+                        return lists[listId.index].cards;
+                    } else {
+                        return await this.trello.getCards(listId.id);
+                    }
+                }
+                const thisCards: ITrelloCardData[] = await initCards(this.thisListId);
+                const lastCards: ITrelloCardData[] = await initCards(this.lastListId);
 
                 for (let lastCard of lastCards) {
+                    let isUpdatedCard: boolean = false;
                     const data = {
                         name: lastCard.name,
                         desc: lastCard.desc
@@ -170,12 +209,15 @@ export class Trebis {
                         names.forEach((name) => {
                             if (utils.isLink(name) && !data.desc.includes(name)) {
                                 data.desc = `[Ссылка на задачу](${name})\n${data.desc}`;
+                                isUpdatedCard = true;
                             }
                         });
                     }
-                    const updateCard = await this.trello.updateCard(lastCard.id, data);
-                    if (updateCard.status && updateCard.data) {
-                        lastCard = updateCard.data;
+                    if (isUpdatedCard) {
+                        const updateCard = await this.trello.updateCard(lastCard.id, data);
+                        if (updateCard.status && updateCard.data) {
+                            lastCard = updateCard.data;
+                        }
                     }
                     let addedCard = true;
                     let addedLabels: string[] = [];
@@ -199,7 +241,7 @@ export class Trebis {
                         }
                         if (isAdded) {
                             const data = {
-                                idList: this.thisListId,
+                                idList: this.thisListId.id,
                                 name: lastCard.name,
                                 desc: lastCard.desc
                             };
@@ -237,12 +279,12 @@ export class Trebis {
                 day--;
             }
         });
-        return count
+        return count;
     }
 
     private getCorrectDate(oldDate: Date, thisDate: Date): Date {
         if (oldDate === null && thisDate === null) {
-            return null
+            return null;
         }
         const date: Date = thisDate;
 
@@ -266,7 +308,7 @@ export class Trebis {
             this._logs('getStatistic(): Не указан идентификатор доски');
             return null;
         }
-        const lists: ITrelloListData[] = await this.trello.getLists(this.boardId);
+        const lists: ITrelloListData[] = await this.getLists();
         await this.initLabels();
         const res = {
             red: 0,
@@ -304,7 +346,7 @@ export class Trebis {
                 break;
             }
             if (isStart) {
-                const cards: ITrelloCardData[] = await this.trello.getCards(list.id);
+                const cards: ITrelloCardData[] = list.cards || (await this.trello.getCards(list.id));
                 for (const card of cards) {
                     for (const label of card.labels) {
                         if (['green', 'blue', 'red', 'yellow'].includes(label.color)) {

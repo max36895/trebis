@@ -23,11 +23,12 @@ export namespace TREBIS {
     export function getDate(date: string): Date {
         // Кто-то заполнял календарь вида 21,03 или 21/03 поэтому на всякий случай обрабатываем это
         date = date.replace(/,|\//g, '.');
+        const isDefaultSeparator = date.includes('.');
         /**
          * Есть проблема, когда указан диапазон дат.
          * В таком случае возвращаем только последнюю определенную дату
          */
-        if (date.includes('.') && date.includes('-')) {
+        if (isDefaultSeparator && date.includes('-')) {
             const parseDates = date.split('-');
             let res: Date = null;
             parseDates.forEach((parseDate) => {
@@ -39,7 +40,7 @@ export namespace TREBIS {
             return res;
         }
 
-        const dateValues: any[] = date.split(date.includes('.') ? '.' : '-');
+        const dateValues: any[] = date.split(isDefaultSeparator ? '.' : '-');
 
         if (dateValues[0] === undefined && dateValues[1] === undefined) {
             return null;
@@ -78,21 +79,14 @@ export namespace TREBIS {
         const date = new Date(time);
         const day = date.getDate();
         const month = date.getMonth() + 1;
+        const correctVal = (val): string => {
+            if (val < 10) {
+                return `0${val}`;
+            }
+            return val + '';
+        }
 
-        let result;
-        if (day < 10) {
-            result = `0${day}`;
-        } else {
-            result = day + '';
-        }
-        result += '.';
-        if (month < 10) {
-            result += `0${month}`;
-        } else {
-            result += month;
-        }
-        result += '.' + (date.getFullYear() - (isFullYear ? 0 : 2000));
-        return result;
+        return `${correctVal(day)}.${correctVal(month)}.${(date.getFullYear() - (isFullYear ? 0 : 2000))}`;
     }
 
     /**
@@ -165,5 +159,13 @@ export namespace TREBIS {
         a.href = URL.createObjectURL(file);
         a.download = fileName;
         a.click();
+    }
+
+    export function getLocalStorage(key): string {
+        return localStorage[`trebis_${key}`] || null;
+    }
+
+    export function setLocalStorage(key, data: string) {
+        localStorage.setItem(`trebis_${key}`, data);
     }
 }

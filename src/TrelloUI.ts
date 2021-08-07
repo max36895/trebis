@@ -185,7 +185,7 @@ export class TrelloUI {
             body.prepend(notification);
             const style = document.createElement('style');
             style.innerHTML = `#${notId}{position:fixed;bottom:10px;right:10px;z-index:22}` +
-                '.trebis_notification_card{padding:2px 5px;width:300px;height:40px;border-radius:4px;display:flex;justify-content:center;align-items:center;color:white;transition:all 2s ease; opacity:1;overflow:hidden;}' +
+                '.trebis_notification_card{margin-bottom:3px;padding:2px 5px;width:300px;height:40px;border-radius:4px;display:flex;justify-content:center;align-items:center;color:white;transition:all 2s ease; opacity:1;overflow:hidden;}' +
                 /*'.trebis_notification_color-green{background:#61bd4f;}' +
                 '.trebis_notification_color-red{background:#eb5a46;}' +*/
                 '.trebis_notification_close{opacity:0}';
