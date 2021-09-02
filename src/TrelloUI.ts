@@ -2,18 +2,26 @@ import {ITrelloUIButton, ITrelloUiCallback} from "./interfaces";
 
 export class TrelloUI {
     public static INPUT_LIST_NAME = 'trebis_new-listName';
+    public static HEADER_ID = 'header';
+    public static BOARD_HEADER = 'board-header';
 
     public static getHeaderButton(options: ITrelloUIButton) {
         const {id, title = 'title', label = 'label', icon} = options;
-        return `<a class="board-header-btn" href="#" id="${id}" title="${title}" aria-label="${label}"><span class="icon-sm icon-${icon} board-header-btn-icon"></span></a>`;
+        return `<a class="board-header-btn" href="#" id="${id}" title="${title}" aria-label="${label}" style="border-bottom:#fff solid 2px;box-sizing:border-box;"><span class="icon-sm icon-${icon} board-header-btn-icon"></span></a>`;
     }
 
     public static getButton(title: string, className: string): string {
         return `<input class="nch-button nch-button--primary mod-list-add-button ${className}" type="submit" value="${title}">`;
     }
 
-    protected static addHeaderEl(selector: string, element: HTMLElement, callbacks?: ITrelloUiCallback[]): boolean {
-        const boardHeader = document.querySelector(selector);
+    protected static addHeaderEl(selector: string, element: HTMLElement,
+                                 callbacks?: ITrelloUiCallback[], isId: boolean = false): boolean {
+        let boardHeader: HTMLElement;
+        if (isId) {
+            boardHeader = document.getElementById(selector);
+        } else {
+            boardHeader = document.querySelector(selector);
+        }
         if (boardHeader) {
             boardHeader.prepend(element);
             if (callbacks) {
@@ -31,11 +39,11 @@ export class TrelloUI {
     }
 
     public static addInHeader(element: HTMLElement, callbacks?: ITrelloUiCallback[]): boolean {
-        return this.addHeaderEl('#header', element, callbacks);
+        return this.addHeaderEl(TrelloUI.HEADER_ID, element, callbacks, true);
     }
 
     public static addInBoardHeader(element: HTMLElement, callbacks?: ITrelloUiCallback[]): boolean {
-        return this.addHeaderEl('.board-header', element, callbacks);
+        return this.addHeaderEl(`.${TrelloUI.BOARD_HEADER}`, element, callbacks);
     }
 
     public static openCreateListDialog(value: string, addCallback?: Function, closeCallback?: Function) {
@@ -48,8 +56,8 @@ export class TrelloUI {
             myCard.style.width = '100%';
             myCard.style.height = '100%';
             myCard.style.zIndex = '2';
-            myCard.innerHTML = '<div style="width:100%; height:100%;background:black; opacity:0.5" class="trebis_close_newList"></div>' +
-                '<div style="position:absolute; top:0;" class="js-add-list  list-wrapper mod-add"><form>' +
+            myCard.innerHTML = '<div style="width:100%;height:100%;background:black;opacity:0.5" class="trebis_close_newList"></div>' +
+                '<div style="position:absolute;top:0;" class="js-add-list  list-wrapper mod-add"><form>' +
                 `<input class="list-name-input ${this.INPUT_LIST_NAME}" value="${value}" type="text" name="name" placeholder="Ввести заголовок списка" autocomplete="off" dir="auto" maxlength="512">` +
                 '<div class="list-add-controls u-clearfix">' +
                 TrelloUI.getButton('Добавить список', `mod-list-add-button ${listNameBtn}`) +
@@ -177,7 +185,7 @@ export class TrelloUI {
             body.prepend(notification);
             const style = document.createElement('style');
             style.innerHTML = `#${notId}{position:fixed;bottom:10px;right:10px;z-index:22}` +
-                '.trebis_notification_card{padding:2px 5px;width:300px;height:40px;border-radius:4px;display:flex;justify-content:center;align-items:center;color:white;transition:all 2s ease; opacity:1;overflow:hidden;}' +
+                '.trebis_notification_card{margin-bottom:3px;padding:2px 5px;width:300px;height:40px;border-radius:4px;display:flex;justify-content:center;align-items:center;color:white;transition:all 2s ease; opacity:1;overflow:hidden;}' +
                 /*'.trebis_notification_color-green{background:#61bd4f;}' +
                 '.trebis_notification_color-red{background:#eb5a46;}' +*/
                 '.trebis_notification_close{opacity:0}';

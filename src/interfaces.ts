@@ -63,6 +63,7 @@ export interface ITrelloData {
 export interface ITrelloListData {
     id?: string;
     name?: string;
+    cards?: ITrelloCardData[];
 
     [key: string]: any;
 }
@@ -79,6 +80,11 @@ export interface ITrelloCardData {
     labels?: ITrelloLabel[];
 
     [key: string]: any;
+}
+
+export interface ITrebisListId {
+    id: string;
+    index: number;
 }
 
 export interface ITrebisLabel {

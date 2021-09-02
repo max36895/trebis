@@ -2,7 +2,7 @@
   "name": "TreBis",
   "short_name": "TreBis",
   "description": "Расширение для автоматического создания списка в Trello и просмотра статистики.",
-  "version": "0.6",
+  "version": "0.6.3",
   "content_scripts": [
     {
       "matches": [
@@ -17,17 +17,15 @@
     "36": "images/icon.png",
     "48": "images/icon-48.png"
   },
-  "browser_action": {
+  "action": {
     "default_icon": "images/icon.png",
     "default_popup": "index.html"
   },
-  "web_accessible_resources": [
-    "images/*"
-  ],
-  "permissions": [
+  "permissions": [],
+  "host_permissions": [
     "https://trello.com/",
     "https://api.trello.com/",
     "https://www.maxim-m.ru/"
   ],
-  "manifest_version": 2
+  "manifest_version": 3
 }
