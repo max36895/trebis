@@ -87,9 +87,13 @@ export class Request {
     }
 
     public static getQueryString(params): string {
-        return Object.keys(params)
-            .map(key => `${key}=${params[key]}`)
-            .join('&');
+        const keys = Object.keys(params);
+        if (keys.length) {
+            return keys
+                .map(key => `${key}=${params[key]}`)
+                .join('&');
+        }
+        return '';
     }
 
     /**
@@ -121,7 +125,7 @@ export class Request {
                 }
                 return await response.text();
             }
-            this._error = 'Не удалось получить данные с ' + this.url;
+            this._error = `Не удалось получить данные с ${this.url}`;
         } else {
             this._error = 'Не указан url!';
         }

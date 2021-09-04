@@ -5,7 +5,6 @@ export namespace TREBIS {
      * Сравниваем даты
      * @param date1
      * @param date2
-     * @private
      */
     export function isEqualDate(date1: Date, date2: Date) {
         // Можно конечно сделать проверку date1 >= date2 && date2 >= date1,
@@ -18,11 +17,10 @@ export namespace TREBIS {
     /**
      * Пытаемся распарсить строку с датой. При успехе вернется объект Date иначе null
      * @param date
-     * @private
      */
     export function getDate(date: string): Date {
         // Кто-то заполнял календарь вида 21,03 или 21/03 поэтому на всякий случай обрабатываем это
-        date = date.replace(/,|\//g, '.');
+        date = date.replace(/[,/]/g, '.');
         const isDefaultSeparator = date.includes('.');
         /**
          * Есть проблема, когда указан диапазон дат.

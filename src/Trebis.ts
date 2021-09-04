@@ -8,7 +8,9 @@ import {
     ITrebisListId,
     ITrebisStatistic,
     ITrelloCardData,
-    ITrelloListData
+    ITrelloListData,
+    ITrelloMembers,
+    ITrelloOrg
 } from "./interfaces";
 
 export class Trebis {
@@ -36,13 +38,55 @@ export class Trebis {
         }
     }
 
+    protected async _getOrg(members: ITrelloMembers): Promise<ITrelloOrg> {
+        if (members && members.organizations) {
+            for (const org of members.organizations) {
+                // todo хз на сколько это хорошее решение. Стоит найти более лучший способ находить нужную организацию
+                const whiteList = [
+                    'sbis', 'trebis', 'сбис'
+                ]
+                const isTrebisOrg = org.desc?.toLowerCase()?.match(new RegExp(whiteList.join('|'))) ||
+                    org.name.indexOf('_ts') === 0;
+                if (isTrebisOrg) {
+                    utils.setLocalStorage('org_name', org.name);
+                    const admins = [];
+                    org.memberships.forEach((membership) => {
+                        if (members.id === membership.idMember && membership.memberType === 'admin'
+                            && !membership.deactivated) {
+                            admins.push(members.username);
+                        }
+                    });
+                    if (admins.length) {
+                        utils.setLocalStorage('admins', JSON.stringify(admins));
+                    }
+                    return await this.trello.getOrganizations(org.id);
+                }
+            }
+        }
+        return null
+    }
+
+    public async getOrgBoard(): Promise<ITrelloOrg> {
+        const orgName = utils.getLocalStorage('org_name');
+        if (orgName) {
+            return await this.trello.getOrganizations(orgName);
+        }
+        const boards = await this.trello.getOrganizations(Trebis.ORG_NAME);
+        if (boards) {
+            utils.setLocalStorage('org_name', Trebis.ORG_NAME);
+            return boards;
+        }
+        const members = await this.trello.getMembers();
+        return this._getOrg(members);
+    }
+
     /**
      * Получение идентификатора доски.
      * Он нужен для добавления, обновления и удаления карточек и списков
      * @param shortLink
      */
     public async getBoardId(shortLink: string): Promise<string> {
-        const key = shortLink + '_board-id';
+        const key = `${shortLink}_board-id`;
         const localBoardId = utils.getLocalStorage(key);
         if (localBoardId) {
             this.boardId = localBoardId;
@@ -64,9 +108,9 @@ export class Trebis {
              * Поэтому получаем все доски организации и ищем нужную доску.
              * + в том, что можно залезть в чужую доску и работать с ней
              */
-            boards = await this.trello.getOrganizations(Trebis.ORG_NAME);
+            boards = (await this.getOrgBoard())?.boards;
             if (boards) {
-                boards.boards.forEach((board) => {
+                boards.forEach((board) => {
                     if (shortLink.includes(board.shortLink)) {
                         this.boardId = board.id;
                     }
@@ -84,6 +128,14 @@ export class Trebis {
         return await this.trello.getLists(boardId || this.boardId, {cards: 'open'});
     }
 
+    protected _getBoardId(methodName): boolean {
+        if (!this.boardId) {
+            this._logs(`${methodName}(): Не указан id доски`);
+            return false;
+        }
+        return true;
+    }
+
     /**
      * Получаем все метки
      */
@@ -94,28 +146,24 @@ export class Trebis {
             this.labels = JSON.parse(labels)
             return;
         }
-        if (this.boardId) {
+        if (this._getBoardId('initLabels')) {
             const labels = trelloLabels || await this.trello.getLabels(this.boardId);
             this.labels = {};
             labels.forEach((label) => {
                 this.labels[label.color] = label.id;
             });
             utils.setLocalStorage(key, JSON.stringify(this.labels));
-        } else {
-            this._logs('initLabels(): Не указан идентификатор доски');
         }
     }
 
     public async createList(name?: string): Promise<boolean> {
         this.thisListId = null;
-        if (this.boardId) {
+        if (this._getBoardId('createList')) {
             const result = await this.trello.addList({idBoard: this.boardId, name});
             if (result.status && result.data) {
                 this.thisListId = {id: result.data.id, index: null};
                 return true;
             }
-        } else {
-            this._logs('createList(): Не указан идентификатор доски');
         }
         return false;
     }
@@ -180,7 +228,7 @@ export class Trebis {
     }
 
     public async updateCard(trelloLists?: ITrelloListData[]): Promise<number> {
-        if (this.boardId) {
+        if (this._getBoardId('updateCard')) {
             const lists: ITrelloListData[] = trelloLists || (await this.getLists());
             await this.initListId(lists);
             let cardCount = 0;
@@ -256,8 +304,6 @@ export class Trebis {
             } else {
                 this._logs('updateCard(): Не удалось найти карточку за предыдущий рабочий день');
             }
-        } else {
-            this._logs('updateCard(): Не указан идентификатор доски');
         }
         return null;
     }
@@ -304,8 +350,7 @@ export class Trebis {
      */
     public async getStatistic(startValue: string, endValue: string,
                               options: { isSaveOnServer: boolean, boardName: string } = null): Promise<ITrebisStatistic> {
-        if (!this.boardId) {
-            this._logs('getStatistic(): Не указан идентификатор доски');
+        if (!this._getBoardId('getStatistic')) {
             return null;
         }
         const lists: ITrelloListData[] = await this.getLists();
@@ -400,6 +445,7 @@ export class Trebis {
         if (options && options.isSaveOnServer && res) {
             const serverApi = new ServerApi();
             serverApiData.name = options.boardName;
+            serverApiData.orgName = utils.getLocalStorage('org_name') || Trebis.ORG_NAME;
             await serverApi.save(serverApiData);
             serverApiData = null;
         }

@@ -5,9 +5,9 @@ export class TrelloUI {
     public static HEADER_ID = 'header';
     public static BOARD_HEADER = 'board-header';
 
-    public static getHeaderButton(options: ITrelloUIButton) {
+    public static getHeaderButton(options: ITrelloUIButton): string {
         const {id, title = 'title', label = 'label', icon} = options;
-        return `<a class="board-header-btn" href="#" id="${id}" title="${title}" aria-label="${label}" style="border-bottom:#fff solid 2px;box-sizing:border-box;"><span class="icon-sm icon-${icon} board-header-btn-icon"></span></a>`;
+        return `<a class="board-header-btn" href="#" id="${id}" title="${title}" aria-label="${label}" style="border-bottom:#fff solid 2px;box-sizing:border-box"><span class="icon-sm icon-${icon} board-header-btn-icon"></span></a>`;
     }
 
     public static getButton(title: string, className: string): string {
@@ -46,7 +46,7 @@ export class TrelloUI {
         return this.addHeaderEl(`.${TrelloUI.BOARD_HEADER}`, element, callbacks);
     }
 
-    public static openCreateListDialog(value: string, addCallback?: Function, closeCallback?: Function) {
+    public static openCreateListDialog(value: string, addCallback?: Function, closeCallback?: Function): boolean {
         const board = document.getElementById('board');
         if (board) {
             const listNameBtn = 'trebis_new-listName-add';
@@ -57,7 +57,7 @@ export class TrelloUI {
             myCard.style.height = '100%';
             myCard.style.zIndex = '2';
             myCard.innerHTML = '<div style="width:100%;height:100%;background:black;opacity:0.5" class="trebis_close_newList"></div>' +
-                '<div style="position:absolute;top:0;" class="js-add-list  list-wrapper mod-add"><form>' +
+                '<div style="position:absolute;top:0" class="js-add-list  list-wrapper mod-add"><form>' +
                 `<input class="list-name-input ${this.INPUT_LIST_NAME}" value="${value}" type="text" name="name" placeholder="Ввести заголовок списка" autocomplete="off" dir="auto" maxlength="512">` +
                 '<div class="list-add-controls u-clearfix">' +
                 TrelloUI.getButton('Добавить список', `mod-list-add-button ${listNameBtn}`) +
@@ -157,11 +157,12 @@ export class TrelloUI {
             body.prepend(loadingWrapper);
             const style = document.createElement('style');
             style.innerHTML = `#${this.TREBIS_INDICATOR}{position:fixed;width:100%;height:100%;display:none;justify-content:center;align-items:center;z-index:20}#${this.TREBIS_INDICATOR}:after{content:'';width:100%;height:100%;background:black;opacity:0.1;top:0;left:0;position:absolute;}#${this.TREBIS_INDICATOR}.trebis_open{display:flex;}`
-                + '.trebis_loading{width:40px;height:40px;border:2px dashed blue;border-right-color:red;border-bottom-color:yellow;border-left-color:green;border-radius:50%;animation:trebis_loading 1s infinite linear;}' +
+                + '.trebis_loading{width:40px;height:40px;border:2px dashed blue;border-right-color:red;border-bottom-color:yellow;border-left-color:green;border-radius:50%;animation:trebis_loading 1.3s infinite linear;}' +
                 '@keyframes trebis_loading{0%{transform:rotate3d(0,0,0,0deg);}100%{transform:rotate3d(1,1,1.8,360deg);}}';
             body.prepend(style);
         }
         loadingWrapper.classList.add('trebis_open');
+        // На случай если вдруг все крашнется. Тогда индикатор сам скроется
         this.indicatorTimeOut = setTimeout(() => {
             this.hideIndicator();
         }, 60000)
@@ -194,13 +195,13 @@ export class TrelloUI {
         const notCard = document.createElement('div');
         notCard.classList.add('trebis_notification_card', `card-label-${style}`);
         notCard.title = msg;
-        notCard.innerHTML = msg;
+        notCard.innerText = msg;
         notification.prepend(notCard);
         setTimeout(() => {
             notCard.classList.add('trebis_notification_close');
             setTimeout(() => {
                 notification.removeChild(notCard);
-            }, 1000);
+            }, 900);
         }, 4000);
     }
 

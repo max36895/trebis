@@ -18,6 +18,7 @@ export interface IGetParams {
 }
 
 export interface IServerApiData {
+    orgName?: string;
     name?: string;
     data?: {
         [year: string]: {
@@ -49,8 +50,35 @@ export interface IServerApiRequest {
     msg?: string;
 }
 
+export interface ITrelloMemberships {
+    deactivated: boolean;
+    id: string;
+    idMember: string;
+    memberType: string;
+    unconfirmed: boolean;
+}
+
+export interface ITrelloOrganizations {
+    name: string;
+    id: string;
+    desc?: string;
+    memberships: ITrelloMemberships[];
+}
+
+export interface ITrelloMembers {
+    id: string;
+    username: string;
+    organizations: ITrelloOrganizations[];
+}
+
 export interface ITrelloOrg {
-    boards: ITrelloListData[];
+    boards: ITrelloBoard[];
+}
+
+export interface ITrelloBoard {
+    id: string;
+    name: string;
+    shortLink: string;
 }
 
 export interface ITrelloData {
