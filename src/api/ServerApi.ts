@@ -22,8 +22,8 @@ export class ServerApi {
         return this._run('save', data);
     }
 
-    public async get(year: string): Promise<IServerApiRequest> {
-        const res = await this._run('get', {year});
+    public async get(year: string, orgName: string): Promise<IServerApiRequest> {
+        const res = await this._run('get', {year, orgName});
         return res.data;
     }
 }

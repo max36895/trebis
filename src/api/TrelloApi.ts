@@ -7,7 +7,9 @@ import {
     ITrelloData,
     ITrelloListData,
     ITrelloOrg,
-    IGetParams
+    IGetParams,
+    ITrelloMembers,
+    ITrelloBoard
 } from "../interfaces";
 
 /**
@@ -59,6 +61,12 @@ export class TrelloApi {
         return query;
     }
 
+    public async getMembers(): Promise<ITrelloMembers> {
+        this._request.url = this._getUrl() + `1/Members/me?organizations=all&organization_fields=name%2CdisplayName%2Cmemberships%2Cdesc${this._getQuery()}`;
+        const send = await this._request.send();
+        return send.data;
+    }
+
     /**
      * Получаем информацию об организации включая доступные доски
      * @param orgName
@@ -72,7 +80,7 @@ export class TrelloApi {
     /**
      * Получение всех досок пользователя
      */
-    public async getBoards() {
+    public async getBoards(): Promise<ITrelloBoard[]> {
         this._request.url = `${this._getUrl()}/1/members/me/boards?fields=name%2CshortLink${this._getQuery()}`;
         const send = await this._request.send();
         return send.data;
@@ -95,7 +103,7 @@ export class TrelloApi {
      * Самого удаления нет. Просто скрываются лишние списки.
      * @param listId
      */
-    public async deleteList(listId: string) {
+    public async deleteList(listId: string): Promise<IRequestSend> {
         this._request.header['Accept'] = 'application/json';
         this._request.customRequest = 'PUT';
         this._request.url = `${this._getUrl()}/1/lists/${listId}/`;
