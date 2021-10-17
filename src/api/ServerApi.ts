@@ -2,7 +2,7 @@ import {Request} from "./Request";
 import {IRequestSend, IServerApiData, IServerApiRequest} from "../interfaces";
 
 /**
- * Класс обращающийся к серверу
+ * Класс обращающийся к серверу с сохраненными дынными
  */
 export class ServerApi {
     private _request: Request;
@@ -22,8 +22,8 @@ export class ServerApi {
         return this._run('save', data);
     }
 
-    public async get(year: string, orgName: string): Promise<IServerApiRequest> {
-        const res = await this._run('get', {year, orgName});
+    public async get(year: string, orgId: string): Promise<IServerApiRequest> {
+        const res = await this._run('get', {year, orgId});
         return res.data;
     }
 }

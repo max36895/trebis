@@ -4,60 +4,25 @@
     <meta charset="utf-8">
     <title>CHANGELOG</title>
     <style>
-        body {
-            font-family: 'Open Sans', sans-serif;
-            font-size: 15px;
-            margin: 0;
-            min-height: 180px;
-            padding: 0;
-            width: 400px;
-        }
-
-        h1 {
-            margin-top: 0;
-        }
-
-        .wrapper {
-            padding: 10px 5px;
-            height: 480px;
-            max-height: 480px;
-            overflow: auto;
-        }
+        body {font-family: 'Open Sans', sans-serif;font-size: 15px;margin: 0;min-height: 180px;padding: 0;width: 400px;}
+        h1, h2 {margin: 0 5px;}
+        .header {display: flex;align-items: center;justify-content: center;}
+        .wrapper {padding: 10px 5px;}
     </style>
 </head>
 <body>
 <div class="wrapper">
-    <h1>Что нового</h1>
-    <div>
-        <p>Добавлено:</p>
-        <ul>
-            <li><b>Новый поиск нужной организации, с которой происходит работа. Теперь для того, чтобы можно было
-                просматривать статистики, и корректно работать с расширением, в описании должно присутствовать одно из
-                слов: sbis, trebis, сбис, либо короткое название должно начинаться с _ts</b></li>
-            <li>Копирование комментариев и вложений в карточке</li>
-            <li>Возможность скачать статистику</li>
-            <li>Кнопка общей статистики отображается всегда</li>
-        </ul>
-        <p>Изменено:</p>
-        <ul>
-            <li>В сравнении статистики добавлен текст, чтобы было понятно что происходит</li>
-            <li>Логика поиска организаций. Теперь нет явной привязки к 1 организации</li>
-            <li>Администратор организации может удалять старые списки</li>
-            <li>Описание некоторых пунктов</li>
-            <li>Текстовые подсказки</li>
-            <li>Логика создания карточек</li>
-            <li>Внешний вид кнопок, чтобы можно было отличить стандартные от тех, которые добавлены расширением</li>
-            <li>В уведомлениях отсутствовал отступ, из-за чего плашки были друг под другом</li>
-            <li>Минимизировано количество запросов к серверу trello за счет локального хранилища и переработанной
-                логики
-            </li>
-        </ul>
-        <p>Исправлено:</p>
-        <ul>
-            <li>Не перемещались комментарии при копировании карточки</li>
-            <li>Немного изменена логика работы расширения, из-за чего стало работать немного быстрее</li>
-        </ul>
-    </div>
+    <div class="header"><img src="images/icon.png" alt=""><h2>Trebis</h2></div>
+    <p>Расширение предназначено для упрощения работы с trello. Оно позволяет:</p>
+    <ul>
+        <li>Переносить карточки с предыдущего рабочего дня</li>
+        <li>Удалять старые списки</li>
+        <li>Вести статистику по свой доске или по всему рабочему пространству</li>
+    </ul>
+    <p>Подробнее о функционале <a href="https://chrome.google.com/webstore/detail/trebis/nhmenioinihecagcdbdmlmocmkoanoko?hl=ru&authuser=0" target="_blank">тут</a></p>
+    <br>
+    <p>По всем замечаниям писать: <a href="https://online.sbis.ru/person/5bf5b206-a664-422b-b5e2-41217142717a" target="_blank">Мочалов М.А.</a></p>
+    <p>Список изменений можно посмотреть: <a href="https://github.com/max36895/trebis/blob/master/CHANGELOG.md" target="_blank">тут</a></p>
 </div>
 </body>
 </html>

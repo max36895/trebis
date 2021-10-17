@@ -19,6 +19,7 @@ export interface IGetParams {
 
 export interface IServerApiData {
     orgName?: string;
+    orgId?: string;
     name?: string;
     data?: {
         [year: string]: {
@@ -72,6 +73,8 @@ export interface ITrelloMembers {
 }
 
 export interface ITrelloOrg {
+    id: string;
+    name: string;
     boards: ITrelloBoard[];
 }
 
