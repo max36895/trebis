@@ -10,7 +10,7 @@ export class TrelloUI {
         return `<a class="board-header-btn" href="#" id="${id}" title="${title}" aria-label="${label}" style="border-bottom:#fff solid 2px;box-sizing:border-box"><span class="icon-sm icon-${icon} board-header-btn-icon"></span></a>`;
     }
 
-    public static getButton(title: string, className: string = '', style:string=''): string {
+    public static getButton(title: string, className: string = '', style: string = ''): string {
         return `<input class="nch-button nch-button--primary mod-list-add-button ${className}" style="${style}" type="submit" value="${title}">`;
     }
 
