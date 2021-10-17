@@ -6,7 +6,7 @@ export namespace TREBIS {
      * @param date1
      * @param date2
      */
-    export function isEqualDate(date1: Date, date2: Date) {
+    export function isEqualDate(date1: Date, date2: Date): boolean {
         // Можно конечно сделать проверку date1 >= date2 && date2 >= date1,
         // но по производительности мой вариант немного быстрее
         return (date1.getDate() === date2.getDate() &&
@@ -90,12 +90,12 @@ export namespace TREBIS {
     /**
      * Преобразование даты из d.m.Y в Y-m-d и наоборот
      * @param date
-     * @param isInput
+     * @param isInput - значение будет использоваться в поле ввода
      * @param isRemoveYear
      */
     export function revertDate(date: string, isInput: boolean = true, isRemoveYear: boolean = false): string {
         if (isInput) {
-            return date.split('.').reverse().join('-')
+            return date.split('.').reverse().join('-');
         } else {
             let dateResult: any = date.split('-').reverse();
 
@@ -104,7 +104,7 @@ export namespace TREBIS {
                 dateResult = dateResult.slice(0, 2);
             }
 
-            return dateResult.join('.')
+            return dateResult.join('.');
         }
     }
 

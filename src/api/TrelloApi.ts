@@ -61,8 +61,11 @@ export class TrelloApi {
         return query;
     }
 
+    /**
+     * Получение информации по доступным рабочим пространствам
+     */
     public async getMembers(): Promise<ITrelloMembers> {
-        this._request.url = this._getUrl() + `1/Members/me?organizations=all&organization_fields=name%2CdisplayName%2Cmemberships%2Cdesc${this._getQuery()}`;
+        this._request.url = `${this._getUrl()}/1/Members/me?organizations=all&organization_fields=name%2CdisplayName%2Cmemberships%2Cdesc${this._getQuery()}`;
         const send = await this._request.send();
         return send.data;
     }
@@ -72,7 +75,7 @@ export class TrelloApi {
      * @param orgName
      */
     public async getOrganizations(orgName: string): Promise<ITrelloOrg> {
-        this._request.url = this._getUrl() + `/1/Organizations/${orgName}?boards=open&board_fields=name%2CshortLink%2CshortUrl&fields=name${this._getQuery()}`;
+        this._request.url = `${this._getUrl()}/1/Organizations/${orgName}?boards=open&board_fields=name%2CshortLink%2CshortUrl&fields=name${this._getQuery()}`;
         const send = await this._request.send();
         return send.data;
     }

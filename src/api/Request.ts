@@ -118,12 +118,16 @@ export class Request {
      */
     private async _run(): Promise<any> {
         if (this.url) {
-            const response = await fetch(this._getUrl(), this._getOptions());
-            if (response.ok) {
-                if (this.isConvertJson) {
-                    return await response.json();
+            try {
+                const response = await fetch(this._getUrl(), this._getOptions());
+                if (response.ok) {
+                    if (this.isConvertJson) {
+                        return await response.json();
+                    }
+                    return await response.text();
                 }
-                return await response.text();
+            } catch (e) {
+                console.warn(e.messageText);
             }
             this._error = `Не удалось получить данные с ${this.url}`;
         } else {

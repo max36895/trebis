@@ -38,51 +38,52 @@ export namespace TREBIS {
         private readonly ADMIN_USERS = ['maxim45387091', 'krasilnikow'];
         protected _trebis: Trebis;
 
+        public constructor() {
+            this._trebisInit();
+        }
+
         protected _trebisInit(): boolean {
-            const trelloToken = this.getCookie('token');
-            let localStorage: ILocalStorage = null;
-            if (!trelloToken) {
-                localStorage = this.getLocalStorage();
-            }
-            if (trelloToken || localStorage) {
+            const trelloToken = this._getCookie('token');
+            if (trelloToken) {
                 this._trebis = new Trebis();
-                if (!trelloToken && localStorage) {
-                    const key = localStorage.key;
-                    const token = localStorage.token;
-                    this._trebis.initKeyToken(key, token);
-                } else {
-                    this._trebis.trello.isSendForApi = false;
-                    this._trebis.trello.trelloToken = trelloToken;
-                }
+                this._trebis.trello.isSendForApi = false;
+                this._trebis.trello.trelloToken = trelloToken;
                 return true;
-            } else {
-                this._trebis = null;
             }
+
+            const localStorage: ILocalStorage = this._getLocalStorage();
+            if (localStorage) {
+                this._trebis = new Trebis();
+                const key = localStorage.key;
+                const token = localStorage.token;
+                this._trebis.initKeyToken(key, token);
+                return true;
+            }
+            this._trebis = null;
             return false;
         }
 
-        public getLocalStorage(): ILocalStorage {
-            if (localStorage.trebis_key && localStorage.trebis_token) {
-                return {
-                    key: localStorage.trebis_key,
-                    token: localStorage.trebis_token
-                };
+        protected _getLocalStorage(): ILocalStorage {
+            const key = utils.getLocalStorage('key');
+            const token = utils.getLocalStorage('token');
+            if (key && token) {
+                return {key, token};
             }
             return null;
         }
 
-        public setLocalStorage(storage: ILocalStorage): void {
-            localStorage.setItem('trebis_key', storage.key);
-            localStorage.setItem('trebis_token', storage.token);
+        protected _setLocalStorage(storage: ILocalStorage): void {
+            utils.setLocalStorage('key', storage.key);
+            utils.setLocalStorage('token', storage.token);
         }
 
-        public getCookie(name: string): string {
+        protected _getCookie(name: string): string {
             const matches = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
             return matches ? decodeURIComponent(matches[1]) : undefined;
         }
 
-        public pathName(): string {
-            return document.location.pathname;
+        protected async _getBoardId(): Promise<string> {
+            return await this._trebis.getBoardId(document.location.pathname);
         }
 
         /**
@@ -94,14 +95,14 @@ export namespace TREBIS {
             const callback = async () => {
                 const addCallback = async (e: Event) => {
                     e.preventDefault();
-                    await this._trebis.getBoardId(this.pathName());
+                    await this._getBoardId();
                     const listName: HTMLInputElement = document.querySelector(`.${TrelloUI.INPUT_LIST_NAME}`);
                     const name = listName.value || utils.date();
                     this._trebis.createList(name).then(res => {
                         if (res) {
                             TrelloUI.successNotification(`Список ${name} создан`);
                         } else {
-                            TrelloUI.errorNotification(`Не удалось создать ${name}`);
+                            TrelloUI.errorNotification(`Не удалось создать список ${name}`);
                         }
                     });
                 };
@@ -118,8 +119,8 @@ export namespace TREBIS {
             e.preventDefault();
             const callback = async () => {
                 TrelloUI.showIndicator();
-                await this._trebis.getBoardId(this.pathName());
-                // Добавляем список
+                await this._getBoardId();
+                // Добавляем список если его нет
                 const lists: ITrelloListData[] = await this._trebis.getLists();
                 const name = utils.date();
                 const thisListId = await this._trebis.getListId(lists, name);
@@ -134,10 +135,10 @@ export namespace TREBIS {
                     // Обновляем карточки
                     const count = await this._trebis.updateCard(lists);
                     if (count !== null) {
-                        TrelloUI.successNotification(`Список ${name} создан. Перенесено ${count} задач`);
+                        TrelloUI.successNotification(`Список ${name} создан. Перенесено ${count} карточек`);
                     }
                 } else {
-                    TrelloUI.errorNotification(`Не удалось создать ${name}`);
+                    TrelloUI.errorNotification(`Не удалось создать список ${name}`);
                 }
                 TrelloUI.hideIndicator();
             };
@@ -146,8 +147,6 @@ export namespace TREBIS {
 
         /**
          * Нажата кнопка настроек.
-         * По факту этой кнопки быть не должно, но если она есть, значит не удалось получить токе из cookie
-         * Поэтому даем пользователю возможность ввести ключ и токен вручную
          * @param e
          */
         public settingHandler(e: Event) {
@@ -162,10 +161,10 @@ export namespace TREBIS {
         public removeHandler(e: Event) {
             e.preventDefault();
 
-            if (confirm('Уверены что хотите удалить старые списки, останутся первые 30?')) {
+            if (confirm('Уверены что хотите удалить старые списки? Останутся первые 30')) {
                 if (confirm('На все 100% уверены?')) {
                     const callback = async () => {
-                        await this._trebis.getBoardId(this.pathName());
+                        await this._getBoardId();
                         let lists: ITrelloListData[] = await this._trebis.trello.getLists(this._trebis.boardId);
                         const count = await this._trebis.removeOldLists(lists);
                         TrelloUI.successNotification(`Удалено ${count} списков`);
@@ -199,46 +198,100 @@ export namespace TREBIS {
                     e.preventDefault();
                     if (e.target) {
                         const statisticContent: HTMLElement = document.querySelector(`.${this.STAT_CONTENT}`);
-                        // @ts-ignore
-                        statisticContent.innerHTML = await this._getStatisticFromServer(e.target.innerText);
+                        statisticContent.innerHTML = await this._getStatisticFromServer((e.target as HTMLElement).innerText);
                     }
                 }
             }
         }
 
-        public openSettingModal() {
-            let key = '';
-            let token = '';
-            const localStorage = this.getLocalStorage();
-            if (localStorage) {
-                key = localStorage.key;
-                token = localStorage.token;
-            }
+        public async openSettingModal(isShowAuth: boolean = true): Promise<void> {
+            const isTrebisToken = !!this._getCookie('token');
+            // Если не удалось получить токен, то предлагаем авторизоваться вручную
+            if (!isTrebisToken && isShowAuth) {
+                let key = '';
+                let token = '';
+                const localStorage = this._getLocalStorage();
+                if (localStorage) {
+                    key = localStorage.key;
+                    token = localStorage.token;
+                }
+                const tKey = 'trebis_key';
+                const tToken = 'trebis_token';
 
-            const content: string = '<div class="window-main-col" style="margin:12px 40px 8px 56px;">' +
-                '<span>Узнать ключ и токен:<a href="https://trello.com/app-key" target="_blank">тут</a></span>' +
-                '<form action="#" id="trebis-data"><div>' +
-                '<label for="trebis-key">key</label>' +
-                `<input type="text" id="trebis-key" style="width:100%" value="${key}">` +
-                '</div><div>' +
-                '<label for="trebis-token">token</label>' +
-                `<input type="text" id="trebis-token" style="width:100%"  value="${token}">` +
-                '</div><div>' +
-                '<button class="nch-button--primary">Сохранить</button>' +
-                '</div></form></div>';
-            TrelloUI.openModal(content, 'Настройки');
+                const content: string = '<div class="window-main-col" style="margin:12px 40px 8px 56px;">' +
+                    `${localStorage ? '<a href="#" id="trebis_getOrdId">Выбрать организацию по умолчанию</a>' : ''}` +
+                    '<span>Узнать ключ и токен: <a href="https://trello.com/app-key" target="_blank">тут</a></span>' +
+                    '<form action="#" id="trebis_data"><div>' +
+                    `<label for="${tKey}">key</label>` +
+                    `<input type="text" id="${tKey}" style="width:100%" value="${key}">` +
+                    '</div><div>' +
+                    `<label for="${tToken}">token</label>` +
+                    `<input type="text" id="${tToken}" style="width:100%"  value="${token}">` +
+                    '</div><div>' +
+                    TrelloUI.getButton('Сохранить') +
+                    `</div></form></div>`;
+                TrelloUI.openModal(content, 'Настройки');
 
-            const trebisData: HTMLElement = document.getElementById('trebis-data');
-            trebisData.onsubmit = e => {
-                e.stopPropagation();
-                const keyElement: HTMLInputElement = document.getElementById('trebis-key') as HTMLInputElement;
-                const tokenElement: HTMLInputElement = document.getElementById('trebis-token') as HTMLInputElement;
-                const data: ILocalStorage = {
-                    key: keyElement.value,
-                    token: tokenElement.value
+                const trebisData: HTMLElement = document.getElementById('trebis_data');
+                trebisData.onsubmit = e => {
+                    e.stopPropagation();
+                    const keyElement: HTMLInputElement = document.getElementById(tKey) as HTMLInputElement;
+                    const tokenElement: HTMLInputElement = document.getElementById(tToken) as HTMLInputElement;
+                    const data: ILocalStorage = {
+                        key: keyElement.value,
+                        token: tokenElement.value
+                    };
+                    this._setLocalStorage(data);
+                    TrelloUI.closeModal();
                 };
-                this.setLocalStorage(data);
-                TrelloUI.closeModal();
+                if (localStorage) {
+                    const getOrgId: HTMLElement = document.getElementById('trebis_getOrdId');
+                    getOrgId.onclick = e => {
+                        e.preventDefault();
+                        TrelloUI.closeModal();
+                        this.openSettingModal(false);
+                    };
+                }
+            } else {
+                let contentHTML = `<div class="window-main-col" style="margin:12px 40px 8px 56px;">`;
+                const boards = await this._trebis.trello.getMembers();
+                const orgName = Trebis.getOrgName();
+                if (boards && boards.organizations) {
+                    const formName = 'trebis_board-id';
+                    const radioName = 'trebis_org-name';
+                    contentHTML += `<form action="#" class="${formName}"><label for="${formName}">Выберите рабочее пространство для работы:</label>`
+                    boards.organizations.forEach((org) => {
+                        let value = org.name;
+                        if (org.desc) {
+                            value += ` | (${org.desc.slice(0, 15)}...)`;
+                        }
+                        contentHTML += `<p class="${radioName}" style="cursor: pointer;"><input type="radio" style="margin-right: 7px;" name="${radioName}" value="${org.name}|${org.id}" ${orgName === org.name ? 'checked' : ''}>${value}</p>`
+                    });
+                    contentHTML += TrelloUI.getButton('Сохранить');
+                    contentHTML += '</form>';
+                    TrelloUI.openModal(contentHTML, 'Выбор рабочего пространства по умолчанию');
+
+                    const tForm: HTMLFormElement = document.querySelector(`.${formName}`);
+                    tForm.onsubmit = (e) => {
+                        e.stopPropagation();
+                        const selectValue = tForm.elements[radioName]?.value;
+                        if (selectValue) {
+                            const parseValue = selectValue.split('|');
+                            utils.setLocalStorage(Trebis.SAVED_ORG_NAME, parseValue[0]);
+                            utils.setLocalStorage(Trebis.SAVED_ORG_ID, parseValue[1]);
+                        }
+                        TrelloUI.closeModal();
+                    }
+                    tForm.onclick = (e) => {
+                        const target = e.target as HTMLElement;
+                        if (target.classList.value === radioName) {
+                            (target.children[0] as HTMLInputElement).checked = true;
+                        }
+                    }
+                } else {
+                    contentHTML += '<p>Нет рабочих пространств</p>';
+                }
+                contentHTML += '</div>';
             }
         }
 
@@ -262,7 +315,6 @@ export namespace TREBIS {
             const styleLink = 'margin-left:10px;border-bottom:1px dashed blue;cursor:pointer';
 
             const month = (new Date()).getMonth();
-
             const thisMonth = this._getMonthText(month);
             const oldMonth = this._getMonthText(month - 1);
             let res = '<div class="window-main-col" style="margin:12px 40px 8px 56px;width:calc(100% - 100px)"><div style="display:flex">' +
@@ -276,13 +328,16 @@ export namespace TREBIS {
                 `<p id="${this.STAT_DATE_OLD_MONTH}" style="${styleLink}">За ${oldMonth}</p>` +
                 `<p id="${this.STAT_DATE_ALL}" style="${styleLink}">За все время</p>` +
                 `<p id="${this.STAT_DATE_COMPARISON}" style="${styleLink}">Сравнить ${thisMonth} и ${oldMonth}</p>` +
-                '</div></div>' +
-                `<div><button class="nch-button--primary ${this.STAT_BTN}">Получить</button></div>`;
+                TrelloUI.getButton('Получить', this.STAT_BTN, 'width:100%') +
+                '</div></div>';
 
             if (isFull) {
                 const year = (new Date()).getFullYear();
                 res += `<div style="display:flex;float:left" class="${this.STAT_SERVER_LABEL}">`;
                 for (let i = year; i >= 2020; i--) {
+                    if (i === (year - 5)) {
+                        break;
+                    }
                     res += `<p style="${styleLink}">${i}</p>`;
                 }
                 res += '</div>';
@@ -298,7 +353,7 @@ export namespace TREBIS {
 
             for (const boardName in serverDatas) {
                 if (serverDatas.hasOwnProperty(boardName)) {
-                    res += `<div><h3>Информация о доске: <u>${boardName}</u></h3><table>`;
+                    res += `<div><h3>Информация о доске <u>${boardName}</u></h3><table>`;
                     for (const month in serverDatas[boardName]) {
                         if (serverDatas[boardName].hasOwnProperty(month)) {
                             const data = serverDatas[boardName][month];
@@ -312,12 +367,12 @@ export namespace TREBIS {
             }
 
             if (!res) {
-                res = '<p style="color:red">Нет данных!</p>';
+                return '<p style="color:red">Нет данных</p>';
             }
             return `<div>${res}</div>`;
         }
 
-        protected _getMonthText(month: number) {
+        protected _getMonthText(month: number): string {
             if (month < 0) {
                 month = 12 + month;
             } else if (month > 11) {
@@ -352,7 +407,7 @@ export namespace TREBIS {
             return '';
         }
 
-        private _saveStatistic(contentHtml: HTMLElement) {
+        private _saveStatistic(contentHtml: HTMLElement): void {
             const saveStat = 'trebis_save-stat';
             const body = contentHtml.innerHTML;
             contentHtml.innerHTML += TrelloUI.getButton('Скачать', saveStat);
@@ -369,13 +424,13 @@ export namespace TREBIS {
         private async _getStatisticResult(dateStart: string, dateEnd: string) {
             const callback = async () => {
                 TrelloUI.showIndicator();
-                await this._trebis.getBoardId(this.pathName());
+                await this._getBoardId();
                 TrelloUI.successNotification('Получение данных');
                 const statInfo = await this._trebis.getStatistic(dateStart, dateEnd);
                 const statisticContent: HTMLElement = document.querySelector(`.${this.STAT_CONTENT}`);
                 if (statInfo) {
                     statisticContent.innerHTML =
-                        `<h2>Информация с ${dateStart} по ${dateEnd}</h2><table>${this._getStatisticResultTemplate(statInfo, 'Итог:')}</table>`;
+                        `<h2>Информация с ${dateStart} по ${dateEnd}</h2><table>${this._getStatisticResultTemplate(statInfo, 'Итог')}</table>`;
                     this._saveStatistic(statisticContent);
                 } else {
                     statisticContent.innerHTML = '<p style="color:red">Произошла ошибка при получении доски</p>';
@@ -388,13 +443,14 @@ export namespace TREBIS {
         private async _getStatisticFullResult(dateStart: string, dateEnd: string) {
             const callback = async () => {
                 TrelloUI.showIndicator();
-                const orgBoards: ITrelloOrg = await this._trebis.trello.getOrganizations(Trebis.ORG_NAME);
+                const orgName = Trebis.getOrgName();
+                const orgBoards: ITrelloOrg = await this._trebis.trello.getOrganizations(orgName);
                 const statisticContent: HTMLElement = document.querySelector(`.${this.STAT_CONTENT}`);
-                if (orgBoards && orgBoards.boards) {
+                if (orgBoards?.boards) {
                     statisticContent.innerHTML = `<h2>Информация с ${dateStart} по ${dateEnd}</h2>`;
                     for (const board of orgBoards.boards) {
                         this._trebis.boardId = board.id;
-                        TrelloUI.successNotification(`Получение данных по доске: ${board.name}`);
+                        TrelloUI.successNotification(`Получение данных по доске ${board.name}`);
                         const statInfo = await this._trebis.getStatistic(dateStart, dateEnd,
                             {
                                 boardName: board.name,
@@ -402,8 +458,8 @@ export namespace TREBIS {
                             });
                         if (statInfo) {
                             statisticContent.innerHTML += '<div style="margin:15px 0;">' +
-                                `<h3>Информация по доске: <u>${board.name}</u></h3>` +
-                                `<table>${this._getStatisticResultTemplate(statInfo, 'Итог:')}</table></div>`;
+                                `<h3>Информация по доске <u>${board.name}</u></h3>` +
+                                `<table>${this._getStatisticResultTemplate(statInfo, 'Итог')}</table></div>`;
                         } else {
                             statisticContent.innerHTML += `<p style="color:red">Произошла ошибка при получении доски <u>${board.name}</u></p>`;
                         }
@@ -437,26 +493,26 @@ export namespace TREBIS {
             let yellow;
             let green;
             let blue;
-            let infoText = 'Не выполненных задач стало';
+            let infoText = 'Не выполненных задач';
             if (old.red < current.red) {
                 red = el(current.red - old.red, 'red', `Плохо! ${infoText} больше`);
             } else {
                 red = el(old.red - current.red, 'green', `Супер! ${infoText} меньше`);
             }
-            infoText = 'Перенесенных задач стало'
+            infoText = 'Перенесенных задач'
             if (old.yellow < current.yellow) {
                 yellow = el(current.yellow - old.yellow, 'red', `Плохо! ${infoText} больше`);
             } else {
                 yellow = el(old.yellow - current.yellow, 'green', `Good! ${infoText} меньше`);
             }
-            infoText = 'Выполненных задач стало';
+            infoText = 'Выполненных задач';
             if (old.green < current.green) {
                 green = el(current.green - old.green, 'green', `Супер! ${infoText} больше`);
             } else {
                 green = el(old.green - current.green, 'red', `Не очень! ${infoText} меньше`);
             }
             if (old.blue < current.blue) {
-                blue = el(current.blue - old.blue, 'green', 'Отлично! Выполненных вне плана задач стало больше');
+                blue = el(current.blue - old.blue, 'green', 'Отлично! Выполненных вне плана задач больше');
             } else {
                 blue = el(old.blue - current.blue, 'red', 'Могло быть и лучше');
             }
@@ -490,19 +546,20 @@ export namespace TREBIS {
                 const month = (new Date()).getMonth();
                 const thisMonth = this._getMonthText(month);
                 const oldMonth = this._getMonthText(month - 1);
-                statisticContent.innerHTML = `<h2>Сравнить ${thisMonth} и ${oldMonth}</h2>`;
+                statisticContent.innerHTML = `<h2>Сравнение за ${thisMonth} и ${oldMonth}</h2>`;
                 if (isFull) {
-                    const orgBoards: ITrelloOrg = await this._trebis.trello.getOrganizations(Trebis.ORG_NAME);
+                    const orgName = Trebis.getOrgName();
+                    const orgBoards: ITrelloOrg = await this._trebis.trello.getOrganizations(orgName);
                     if (orgBoards && orgBoards.boards) {
                         for (const board of orgBoards.boards) {
                             this._trebis.boardId = board.id;
-                            statisticContent.innerHTML += `<h3>Информация по доске: <u>${board.name}</u></h3>`;
-                            TrelloUI.successNotification(`Получение данных по доске: ${board.name}`);
+                            statisticContent.innerHTML += `<h3>Информация по доске <u>${board.name}</u></h3>`;
+                            TrelloUI.successNotification(`Получение данных по доске ${board.name}`);
                             await comparisonCallback(thisMonth, oldMonth);
                         }
                     }
                 } else {
-                    await this._trebis.getBoardId(this.pathName());
+                    await this._getBoardId();
                     TrelloUI.successNotification('Получение данных');
                     await comparisonCallback(thisMonth, oldMonth);
                 }
@@ -513,8 +570,8 @@ export namespace TREBIS {
 
         protected async _getStatisticFromServer(year: string): Promise<string> {
             const serverApi = new ServerApi();
-            const orgName = utils.getLocalStorage('org_name') || Trebis.ORG_NAME;
-            const statData = await serverApi.get(year, orgName);
+            const orgId = await this._trebis.getOrgId();
+            const statData = await serverApi.get(year, orgId);
             if (statData.status) {
                 return this._getStatisticServerResultTemplate(statData.res, year);
             } else {
@@ -575,30 +632,20 @@ export namespace TREBIS {
                 const prefix = 'trebis_button_';
                 const addListName = `${prefix}add-list`;
                 const runScriptName = `${prefix}run-script`;
-                const settingName = `${prefix}setting`;
                 const statisticName = `${prefix}statistic`;
                 const trashName = `${prefix}trash`;
-                const isTrebisToken = !!this.getCookie('token');
                 let innerHtml = TrelloUI.getHeaderButton({
                     id: addListName,
                     title: 'Нажмите для создания списка',
-                    label: 'Создать список',
+                    label: 'add',
                     icon: 'add'
                 });
                 innerHtml += TrelloUI.getHeaderButton({
                     id: runScriptName,
-                    title: 'Нажмите для переноса задач',
-                    label: 'Перенос задач',
-                    icon: 'card'
+                    title: 'Нажмите для переноса карточек',
+                    label: 'card',
+                    icon: 'card-recurring'
                 });
-                if (!isTrebisToken) {
-                    innerHtml += TrelloUI.getHeaderButton({
-                        id: settingName,
-                        title: 'Нажмите для открытия настроек',
-                        label: 'Открытие настроек',
-                        icon: 'gear'
-                    });
-                }
                 const memberMenu: HTMLElement = document.querySelector('.js-open-header-member-menu');
                 let isShowDropButton = false;
                 if (memberMenu) {
@@ -613,7 +660,7 @@ export namespace TREBIS {
                         innerHtml += TrelloUI.getHeaderButton({
                             id: trashName,
                             title: 'Нажмите для удаления старых списков',
-                            label: 'Удаление старых списков',
+                            label: 'trash',
                             icon: 'trash'
                         });
                     }
@@ -621,7 +668,7 @@ export namespace TREBIS {
                 innerHtml += TrelloUI.getHeaderButton({
                     id: statisticName,
                     title: 'Нажмите для получения статистики',
-                    label: 'Получение статистики',
+                    label: 'info',
                     icon: 'information'
                 });
                 const buttons = document.createElement('div');
@@ -635,49 +682,42 @@ export namespace TREBIS {
                     callbacks.push({id: trashName, callback: this.removeHandler.bind(this)});
                 }
                 callbacks.push({id: statisticName, callback: this.statisticHandler.bind(this)});
-                if (!isTrebisToken) {
-                    callbacks.push({id: settingName, callback: this.settingHandler.bind(this)})
-                }
-
                 TrelloUI.addInBoardHeader(buttons, callbacks);
             }
         }
 
         public createOrgButtons() {
             if (!document.getElementById(Application.ORG_SELECTOR)) {
-                const prefix = 'trebis_button_';
-                const statisticName = `${prefix}org-statistic`;
-                const settingName = `${prefix}org-setting`;
-                const isTrebisToken = !!this.getCookie('token');
+                const prefix = 'trebis_button_org';
+                const statisticName = `${prefix}-statistic`;
+                const settingName = `${prefix}-setting`;
                 let innerHtml = TrelloUI.getHeaderButton({
                     id: statisticName,
                     title: 'Нажмите для получения общей статистики',
-                    label: 'Получение общей статистики',
+                    label: 'info',
                     icon: 'information'
                 });
-                if (!isTrebisToken) {
-                    innerHtml += TrelloUI.getHeaderButton({
-                        id: settingName,
-                        title: 'Нажмите для открытия настроек',
-                        label: 'Открытие настроек',
-                        icon: 'gear'
-                    });
-                }
+                innerHtml += TrelloUI.getHeaderButton({
+                    id: settingName,
+                    title: 'Нажмите для открытия настроек',
+                    label: 'gear',
+                    icon: 'gear'
+                });
                 const buttons = document.createElement('div');
                 buttons.id = Application.ORG_SELECTOR;
                 buttons.innerHTML = innerHtml;
+                // Без этого, кнопку расположатся друг под другом
+                buttons.style.flexShrink = '0';
                 const callbacks: ITrelloUiCallback[] = [
                     {
                         id: statisticName,
                         callback: this.statisticOrgHandler.bind(this)
                     }
                 ];
-                if (!isTrebisToken) {
-                    callbacks.push({
-                        id: settingName,
-                        callback: this.settingHandler.bind(this)
-                    })
-                }
+                callbacks.push({
+                    id: settingName,
+                    callback: this.settingHandler.bind(this)
+                });
                 TrelloUI.addInHeader(buttons, callbacks)
             }
         }

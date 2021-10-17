@@ -14,7 +14,9 @@ import {
 } from "./interfaces";
 
 export class Trebis {
-    public static ORG_NAME = 'basecontrol';
+    public static BASE_ORG_NAME = 'basecontrol';
+    public static SAVED_ORG_NAME = 'saved_org-name';
+    public static SAVED_ORG_ID = 'saved_org-id';
     public trello: TrelloApi;
 
     protected labels: ITrebisLabel = null;
@@ -26,6 +28,29 @@ export class Trebis {
     public constructor(key: string = null, token: string = null) {
         this.trello = new TrelloApi();
         this.initKeyToken(key, token);
+    }
+
+    /**
+     * Получение названия текущего рабочего пространства
+     */
+    public static getOrgName(): string {
+        return utils.getLocalStorage(Trebis.SAVED_ORG_NAME) || utils.getLocalStorage('org_name') || Trebis.BASE_ORG_NAME;
+    }
+
+    /**
+     * Получение идентификатора текущего рабочего пространства
+     */
+    public async getOrgId(): Promise<string> {
+        let orgId = utils.getLocalStorage(Trebis.SAVED_ORG_ID);
+        const orgName = Trebis.getOrgName();
+        if (!orgId) {
+            const org = await this.trello.getOrganizations(orgName);
+            if (org) {
+                orgId = org.id;
+                utils.setLocalStorage(Trebis.SAVED_ORG_ID, orgId);
+            }
+        }
+        return orgId;
     }
 
     public initKeyToken(key: string = null, token: string = null): void {
@@ -49,6 +74,7 @@ export class Trebis {
                     org.name.indexOf('_ts') === 0;
                 if (isTrebisOrg) {
                     utils.setLocalStorage('org_name', org.name);
+                    utils.setLocalStorage(Trebis.SAVED_ORG_ID, org.id);
                     const admins = [];
                     org.memberships.forEach((membership) => {
                         if (members.id === membership.idMember && membership.memberType === 'admin'
@@ -63,17 +89,18 @@ export class Trebis {
                 }
             }
         }
-        return null
+        return null;
     }
 
     public async getOrgBoard(): Promise<ITrelloOrg> {
-        const orgName = utils.getLocalStorage('org_name');
+        const orgName = utils.getLocalStorage(Trebis.SAVED_ORG_NAME) || utils.getLocalStorage('org_name');
         if (orgName) {
             return await this.trello.getOrganizations(orgName);
         }
-        const boards = await this.trello.getOrganizations(Trebis.ORG_NAME);
+        const boards = await this.trello.getOrganizations(Trebis.BASE_ORG_NAME);
         if (boards) {
-            utils.setLocalStorage('org_name', Trebis.ORG_NAME);
+            utils.setLocalStorage('org_name', Trebis.BASE_ORG_NAME);
+            utils.setLocalStorage(Trebis.SAVED_ORG_ID, boards.id);
             return boards;
         }
         const members = await this.trello.getMembers();
@@ -97,11 +124,12 @@ export class Trebis {
          */
         let boards = await this.trello.getBoards();
         this.boardId = null;
-        boards.forEach((board) => {
+        for (const board of boards) {
             if (shortLink.includes(board.shortLink)) {
                 this.boardId = board.id;
+                break;
             }
-        });
+        }
         if (!this.boardId) {
             /**
              * Может быть так, что у пользователя нет доски, но при этом он привязан к доске организации
@@ -110,11 +138,12 @@ export class Trebis {
              */
             boards = (await this.getOrgBoard())?.boards;
             if (boards) {
-                boards.forEach((board) => {
+                for (const board of boards) {
                     if (shortLink.includes(board.shortLink)) {
                         this.boardId = board.id;
+                        break;
                     }
-                });
+                }
             }
         }
         if (this.boardId) {
@@ -130,7 +159,7 @@ export class Trebis {
 
     protected _getBoardId(methodName): boolean {
         if (!this.boardId) {
-            this._logs(`${methodName}(): Не указан id доски`);
+            Trebis._logs(`${methodName}(): Не указан id доски`);
             return false;
         }
         return true;
@@ -223,7 +252,7 @@ export class Trebis {
                 await this.trello.addLabels(cardId, label);
             }
         } else {
-            this._logs('CreateCard(): Не удалось создать карточку');
+            Trebis._logs('CreateCard(): Не удалось создать карточку');
         }
     }
 
@@ -302,7 +331,7 @@ export class Trebis {
                 }
                 return cardCount;
             } else {
-                this._logs('updateCard(): Не удалось найти карточку за предыдущий рабочий день');
+                Trebis._logs('updateCard(): Не удалось найти карточку за предыдущий рабочий день');
             }
         }
         return null;
@@ -328,7 +357,7 @@ export class Trebis {
         return count;
     }
 
-    private getCorrectDate(oldDate: Date, thisDate: Date): Date {
+    private static getCorrectDate(oldDate: Date, thisDate: Date): Date {
         if (oldDate === null && thisDate === null) {
             return null;
         }
@@ -374,7 +403,7 @@ export class Trebis {
         for (const list of lists) {
             let listDate: Date = utils.getDate(list.name);
             if (oldListDate && listDate) {
-                listDate = this.getCorrectDate(oldListDate, listDate);
+                listDate = Trebis.getCorrectDate(oldListDate, listDate);
             }
             if (oldListDate && oldListDate < listDate) {
                 // Если в дате есть год, то все оставляем как есть.
@@ -445,7 +474,8 @@ export class Trebis {
         if (options && options.isSaveOnServer && res) {
             const serverApi = new ServerApi();
             serverApiData.name = options.boardName;
-            serverApiData.orgName = utils.getLocalStorage('org_name') || Trebis.ORG_NAME;
+            serverApiData.orgName = Trebis.getOrgName();
+            serverApiData.orgId = await this.getOrgId();
             await serverApi.save(serverApiData);
             serverApiData = null;
         }
@@ -453,7 +483,7 @@ export class Trebis {
         return res;
     }
 
-    private _logs(error: string): void {
+    private static _logs(error: string): void {
         console.warn(error);
         TrelloUI.errorNotification('Trebis.' + error);
     }
