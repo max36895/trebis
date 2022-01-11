@@ -29,3 +29,4 @@ npm run dev
 npm run build
 ```
 После чего добавить расширение вручную в браузер.
+Для добавления расширения в магазин гугл, нужно перейти на страницу [регистрации](https://chrome.google.com/webstore/devconsole/register)
