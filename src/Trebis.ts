@@ -14,7 +14,7 @@ import {
 } from "./interfaces";
 
 export class Trebis {
-    public static BASE_ORG_NAME = 'basecontrol';
+    public static BASE_ORG_NAME = 'user24729131';
     public static SAVED_ORG_NAME = 'saved_org-name';
     public static SAVED_ORG_ID = 'saved_org-id';
     public trello: TrelloApi;

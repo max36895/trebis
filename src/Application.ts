@@ -35,7 +35,7 @@ export namespace TREBIS {
         protected readonly STAT_SERVER_LABEL = 'trebis_get-server-data';
         protected readonly STAT_CONTENT = 'trebis_statistic-content';
 
-        private readonly ADMIN_USERS = ['maxim45387091', 'krasilnikow'];
+        private readonly ADMIN_USERS = ['maxim45387091', 'noname924'];
         protected _trebis: Trebis;
 
         public constructor() {
@@ -646,9 +646,12 @@ export namespace TREBIS {
                     label: 'card',
                     icon: 'card-recurring'
                 });
-                const memberMenu: HTMLElement = document.querySelector('.js-open-header-member-menu');
+                let memberMenu: HTMLElement = document.querySelector('.js-open-header-member-menu');
                 let isShowDropButton = false;
                 if (memberMenu) {
+                    if (!memberMenu.title) {
+                        memberMenu = memberMenu.children[0] as HTMLElement;
+                    }
                     const userName = (memberMenu.title.match(/\(([^)]+)\)/gi))[0]?.replace(/[()]/gi, '');
                     let adminUsers = this.ADMIN_USERS;
                     const storageAdminUsers = utils.getLocalStorage('admins');
